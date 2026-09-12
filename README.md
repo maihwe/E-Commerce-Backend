@@ -434,7 +434,7 @@ it was written on: that one wraps at about forty columns and inserts a real
 newline when it does, so a pasted `curl` with a JSON body arrives at the shell
 in pieces and the shell runs the pieces. A file has no such problem.
 
-### Two things the walkthrough does by hand, and why
+### The one thing it does by hand, and why
 
 **It cannot really pay.** `POST /orders/{id}/pay` calls Paystack for an
 authorization URL, and a made-up secret key gets refused. The script shows that
@@ -445,20 +445,30 @@ step a real payment would have performed and nothing more, and which is exactly
 what `TestPaystackWebhookIsProcessedExactlyOnce` does. With a real sandbox key
 that line disappears and nothing else changes.
 
-**There is no way to create the first admin.** `POST /register` downgrades
-anything that is not `seller` to `buyer`. That is deliberate — admin rights may
-only be granted by an existing admin, and a marketplace where anyone can sign up
-as an administrator is not a marketplace. But in a fresh database it leaves no
-admin at all, so the walkthrough promotes one with a query.
+**There is no way to create the first admin through the API.** `POST /register`
+downgrades anything that is not `seller` to `buyer`, so admin rights may only
+ever be granted by an existing admin — and a fresh database has no admin to do
+the granting. Coupons, every `/admin` route, and refunds are unreachable until
+one exists.
 
-This is a real gap, and worth naming as one. The production answer is an
-operator-run seeding step rather than an endpoint, and what is missing is that
-step — a documented one-liner is the honest fix until then. Coupons, `/admin/*`,
-and refunds are unreachable without it:
+An endpoint is the wrong answer here, because an endpoint is a way for anyone to
+ask for the privilege. The right answer is an operator-run step, and that is
+`database/promote`:
 
 ```sh
-go run ./database/query "UPDATE users SET role = 'admin' WHERE email = 'you@example.com'"
+go run ./database/promote you@example.com
 ```
+
+It promotes exactly one named account and has no way to promote everyone, so a
+mistyped or missing argument cannot leave a database in which every account is
+an administrator. That is the accident a bare `UPDATE` invites, and it is why
+this is a program rather than a line of SQL in a README — the SQL would be
+shorter. Running it twice is harmless, and a name matching no account is
+answered with the list of the accounts that do exist.
+
+`walkthrough.sh` runs it at step 7, so the bootstrap path documented here is the
+same one the walkthrough exercises rather than a parallel arrangement that only
+the script knows about.
 
 ### Reading values back out of the database
 
@@ -559,6 +569,7 @@ database/
   cmd/migrate.go        applies one migration file
   devdb/                runs PostgreSQL with no installation and no root
   query/                runs one statement, standing in for psql
+  promote/              makes an account an admin, for the first one
   testdb/               prepares a scratch database for the tests
 ```
 

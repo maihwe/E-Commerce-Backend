@@ -98,6 +98,10 @@ cd "$(dirname "$0")"
 
 go build -o "$WORK/query" ./database/query
 
+# The same helper shape again, this time for the one thing
+# the API deliberately will not do: create the first admin.
+go build -o "$WORK/promote" ./database/promote
+
 # step prints a heading.
 step() {
     echo
@@ -222,10 +226,15 @@ request -b "$BUYER_JAR" -X POST "$BASE/cart/items" \
 step "7. An admin appears, and mints a coupon"
 
 echo "Registration can only ever produce a buyer or a seller, which is"
-echo "deliberate: admin rights must be granted by an existing admin."
-echo "There is no first admin in a fresh database, so one is promoted"
-echo "here directly. That bootstrap step is a real gap in the API and"
-echo "is noted in the README."
+echo "deliberate: admin rights must be granted by an existing admin, and"
+echo "a marketplace where anyone can sign up as an administrator is not"
+echo "a marketplace. The cost of that rule is that a fresh database has"
+echo "no admin in it at all, so there is nobody to do the granting."
+echo
+echo "That first admin therefore comes from an operator-run command"
+echo "rather than from an endpoint, since an endpoint would be a way"
+echo "for anyone to ask for the privilege. This is database/promote,"
+echo "run here exactly as the README tells an operator to run it."
 echo
 
 request -X POST "$BASE/register" \
@@ -236,11 +245,7 @@ request -X POST "$BASE/register" \
         \"password\": \"password123\"
     }"
 
-db_value \
-    "UPDATE users SET role = 'admin' WHERE email = 'root$RUN@example.com'" \
-    > /dev/null
-
-echo "promoted root$RUN@example.com to admin"
+"$WORK/promote" "root$RUN@example.com"
 
 request -c "$ADMIN_JAR" -X POST "$BASE/login" \
     -H 'Content-Type: application/json' \
@@ -448,8 +453,10 @@ echo "status guard so a racing request updates no rows and loses."
 
 request -b "$SELLER_JAR" -X POST "$BASE/orders/$ORDER_ID/ship"
 
-echo "A buyer cannot cancel an order that has already been paid for."
-echo "The honest exit from a paid order is a refund, not a cancellation."
+echo "A buyer cannot cancel an order that has already been delivered."
+echo "The honest exit from a delivered order is a refund, not a"
+echo "cancellation, and the error names delivered rather than paid"
+echo "because that is the status the order is actually in by now."
 
 request -b "$BUYER_JAR" -X POST "$BASE/orders/$ORDER_ID/cancel"
 
