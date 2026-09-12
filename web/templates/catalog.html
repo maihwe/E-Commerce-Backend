@@ -1,0 +1,128 @@
+{{define "content"}}
+
+<!--
+  Two strips of chips, both of which are ordinary links.
+  A filter that is a link can be bookmarked and shared,
+  and works with JavaScript switched off.
+-->
+<nav class="chips" aria-label="Categories">
+  <a class="chip{{if eq .CategoryID 0}} on{{end}}"
+     href="{{.CategoryURL 0}}">All</a>
+
+  {{range .Categories}}
+  <a class="chip{{if eq .ID $.CategoryID}} on{{end}}"
+     href="{{$.CategoryURL .ID}}">{{.Name}}<span class="count">{{.ProductCount}}</span></a>
+  {{end}}
+</nav>
+
+<nav class="chips" aria-label="Sort order">
+  <span class="chips-label">Sort</span>
+
+  <a class="chip{{if or (eq .Sort "") (eq .Sort "newest")}} on{{end}}"
+     href="{{.SortURL "newest"}}">Newest</a>
+
+  <a class="chip{{if eq .Sort "price_asc"}} on{{end}}"
+     href="{{.SortURL "price_asc"}}">Price low</a>
+
+  <a class="chip{{if eq .Sort "price_desc"}} on{{end}}"
+     href="{{.SortURL "price_desc"}}">Price high</a>
+
+  <a class="chip{{if eq .Sort "rating"}} on{{end}}"
+     href="{{.SortURL "rating"}}">Best rated</a>
+</nav>
+
+<section class="hero">
+  <p class="hero-kicker">
+    {{if .Query}}Search results{{else}}Everything on sale{{end}}
+  </p>
+
+  <h1 class="hero-title">
+    {{if .Query}}
+    &ldquo;{{.Query}}&rdquo;
+    {{else}}
+    {{.Page.Total}} {{if eq .Page.Total 1}}thing{{else}}things{{end}} to buy
+    {{end}}
+  </h1>
+</section>
+
+{{if .Page.Data}}
+
+<!--
+  A card is a link and nothing else, so the whole tile is
+  the tap target. On a phone that is the difference between
+  hitting a product and missing it.
+-->
+<div class="grid">
+  {{range .Page.Data}}
+  <a class="card" href="/shop/products/{{.ID}}">
+
+    <!--
+      There is no photograph to show, so the product is
+      drawn. A category with a picture gets that, and a
+      category without one falls back to the product's
+      initials, so no tile is ever empty.
+    -->
+    <span class="tile {{tileClass .ID}}">{{with categoryIcon ($.CategoryName .CategoryID)}}{{.}}{{else}}{{tileInitials .Name}}{{end}}</span>
+
+    <span class="card-body">
+      <span class="card-name">{{.Name}}</span>
+
+      <span class="card-meta">
+        {{if gt .ReviewCount 0}}
+        <span class="stars">{{stars .AverageRating}}</span>
+        {{printf "%.1f" .AverageRating}}
+        {{else}}
+        No reviews yet
+        {{end}}
+      </span>
+
+      <span class="card-foot">
+        <span class="price">{{money .Price}}</span>
+
+        <span class="pill{{if le .StockAvailable 0}} out{{end}}">
+          {{if gt .StockAvailable 0}}{{.StockAvailable}} left{{else}}Sold out{{end}}
+        </span>
+      </span>
+    </span>
+  </a>
+  {{end}}
+</div>
+
+{{else}}
+
+<section class="pad empty">
+  <h1>Nothing here yet</h1>
+
+  {{if .Query}}
+  <p class="muted">
+    No product matches &ldquo;{{.Query}}&rdquo;. Try a
+    shorter search, or pick a category above.
+  </p>
+  {{else}}
+  <p class="muted">
+    No product has been listed in this category yet.
+  </p>
+  {{end}}
+</section>
+
+{{end}}
+
+{{if or .HasPrev .HasNext}}
+<nav class="pager">
+  {{if .HasPrev}}
+  <a href="{{.PrevURL}}" class="pager-link">Newer</a>
+  {{else}}
+  <span></span>
+  {{end}}
+
+  <span class="muted">Page {{.Page.Page}} of {{.Page.TotalPages}}</span>
+
+  {{if .HasNext}}
+  <a href="{{.NextURL}}" class="pager-link">Older</a>
+  {{else}}
+  <span></span>
+  {{end}}
+</nav>
+{{end}}
+
+{{end}}

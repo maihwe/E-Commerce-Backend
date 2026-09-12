@@ -1,0 +1,68 @@
+{{define "content"}}
+
+<article class="pad">
+
+  <p class="crumbs">
+    <a href="/shop">Shop</a>
+    {{if .Category.ID}}
+    <span class="sep">/</span>
+    <a href="/shop?category={{.Category.ID}}">{{.Category.Name}}</a>
+    {{end}}
+  </p>
+
+  <!--
+    The product shown large. It is the same tile the
+    catalog drew, only bigger, so tapping a card and
+    landing here feels like the same object rather than a
+    different one.
+  -->
+  <div class="tile hero-tile {{tileClass .Product.ID}}">
+    {{with categoryIcon .Category.Name}}{{.}}{{else}}{{tileInitials .Product.Name}}{{end}}
+  </div>
+
+  <h1 class="product-name">{{.Product.Name}}</h1>
+
+  <p class="rating">
+    {{if gt .Product.ReviewCount 0}}
+    <span class="stars">{{stars .Product.AverageRating}}</span>
+    {{printf "%.1f" .Product.AverageRating}} out of 5
+    <span class="muted">· {{.Product.ReviewCount}} review{{if ne .Product.ReviewCount 1}}s{{end}}</span>
+    {{else}}
+    <span class="muted">No reviews yet</span>
+    {{end}}
+  </p>
+
+  <p class="price big">{{money .Product.Price}}</p>
+
+  <p class="stock{{if not .InStock}} out{{end}}">
+    {{if .InStock}}
+    {{.Product.StockAvailable}} in stock
+    {{else}}
+    Out of stock
+    {{end}}
+  </p>
+
+  {{if .Product.Description}}
+  <p class="description">{{.Product.Description}}</p>
+  {{end}}
+
+  {{if .Seller.ID}}
+  <p class="muted small">Listed by {{.Seller.Name}}</p>
+  {{end}}
+
+  {{if not .Product.IsActive}}
+  <!--
+    Only the seller who owns this listing, or an admin,
+    ever reaches this page while it is withdrawn. Saying so
+    is more useful than showing them a listing that looks
+    live and is not.
+  -->
+  <p class="notice">
+    This listing is withdrawn, so shoppers cannot find it.
+    You are seeing it because it is yours.
+  </p>
+  {{end}}
+
+</article>
+
+{{end}}

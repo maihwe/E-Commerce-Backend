@@ -1,0 +1,48 @@
+{{define "content"}}
+
+<section class="pad narrow">
+
+  <h1>Sign in</h1>
+
+  {{if .Error}}
+  <p class="alert" role="alert">{{.Error}}</p>
+  {{end}}
+
+  <form method="post" action="/shop/login" class="stack">
+
+    <!--
+      Carried through the form rather than left in the
+      address bar, so that a refusal re-renders the page
+      and the destination survives the round trip.
+    -->
+    <input type="hidden" name="next" value="{{.Next}}">
+
+    <label for="email">Email</label>
+    <input
+      id="email"
+      type="email"
+      name="email"
+      value="{{.Email}}"
+      autocomplete="email"
+      autocapitalize="none"
+      spellcheck="false"
+      required>
+
+    <label for="password">Password</label>
+    <input
+      id="password"
+      type="password"
+      name="password"
+      autocomplete="current-password"
+      required>
+
+    <button type="submit">Sign in</button>
+  </form>
+
+  <p class="muted">
+    No account yet? <a href="/shop/register">Create one</a>.
+  </p>
+
+</section>
+
+{{end}}

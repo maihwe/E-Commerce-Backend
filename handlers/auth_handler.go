@@ -1,17 +1,17 @@
 package handlers
 
+// The rules that used to live in these handlers have
+// moved to auth.go, where the two callers that need them
+// can share them: the JSON endpoints below, and the
+// storefront's forms. What is left here is the part that
+// is genuinely about JSON — decoding a body and choosing
+// a status code.
 import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 	"time"
 
-	"e-commerce-backend/models"
-	"e-commerce-backend/storage"
-	"e-commerce-backend/utils"
-
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -40,6 +40,10 @@ const sessionLifetime = 24 * time.Hour
 //
 // HttpOnly means JavaScript cannot read the token,
 // which protects it from cross-site scripting.
+//
+// It is only ever called by StartSession, so the
+// attributes here are the attributes of every login in
+// the application.
 func writeSessionCookie(
 	w http.ResponseWriter,
 	token string,
@@ -49,7 +53,7 @@ func writeSessionCookie(
 	http.SetCookie(
 		w,
 		&http.Cookie{
-			Name: "session_token",
+			Name: sessionCookieName,
 
 			Value: token,
 
@@ -66,6 +70,39 @@ func writeSessionCookie(
 			SameSite: http.SameSiteLaxMode,
 
 			Expires: expiresAt,
+		},
+	)
+}
+
+// clearSessionCookie removes the session cookie from the
+// browser by overwriting it with an empty value that has
+// already expired.
+//
+// The attributes have to match the ones the cookie was set
+// with. A browser matches a deletion to a cookie by name,
+// path and domain, so a deletion with a different path
+// leaves the original cookie in place and the visitor
+// still carrying a token that no longer names a session.
+func clearSessionCookie(w http.ResponseWriter) {
+
+	http.SetCookie(
+		w,
+		&http.Cookie{
+			Name: sessionCookieName,
+
+			Value: "",
+
+			Path: "/",
+
+			HttpOnly: true,
+
+			Secure: false,
+
+			SameSite: http.SameSiteLaxMode,
+
+			MaxAge: -1,
+
+			Expires: time.Unix(1, 0),
 		},
 	)
 }
@@ -97,91 +134,34 @@ func RegisterHandler(pool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		request.Name =
-			strings.TrimSpace(request.Name)
-
-		if request.Name == "" {
-
-			http.Error(
-				w,
-				"Name is required",
-				http.StatusBadRequest,
-			)
-
-			return
-		}
-
-		validationError :=
-			utils.ValidateUserRegistration(
-				request.Email,
-				request.Password,
-			)
-
-		if validationError != "" {
-
-			http.Error(
-				w,
-				validationError,
-				http.StatusBadRequest,
-			)
-
-			return
-		}
-
-		// A visitor may choose to sign up as a buyer
-		// or as a seller. Anything else, including
-		// admin, is rejected and falls back to buyer.
-		role := strings.ToLower(
-			strings.TrimSpace(request.Role),
+		createdUser, err := RegisterAccount(
+			pool,
+			request.Name,
+			request.Email,
+			request.Password,
+			request.Role,
 		)
 
-		if role != models.RoleSeller {
-			role = models.RoleBuyer
-		}
-
-		passwordHash, err :=
-			utils.HashPassword(
-				request.Password,
-			)
-
 		if err != nil {
 
-			http.Error(
-				w,
-				"Could not secure password",
-				http.StatusInternalServerError,
-			)
+			// A message written for a person is safe to
+			// send back to one. Anything else is a fault
+			// here rather than in the request, so the
+			// detail stays out of the response.
+			var invalid ValidationError
 
-			return
-		}
+			if errors.As(err, &invalid) {
 
-		user := models.User{
-			Name: strings.TrimSpace(request.Name),
+				http.Error(
+					w,
+					invalid.Message,
+					http.StatusBadRequest,
+				)
 
-			Email: strings.ToLower(
-				strings.TrimSpace(request.Email),
-			),
+				return
+			}
 
-			PasswordHash: passwordHash,
-
-			Role: role,
-		}
-
-		createdUser, err :=
-			storage.CreateUserInDB(
-				pool,
-				user,
-			)
-
-		if err != nil {
-
-			// PostgreSQL error 23505 means a UNIQUE
-			// constraint was broken, which here can
-			// only be the email address.
-			var pgError *pgconn.PgError
-
-			if errors.As(err, &pgError) &&
-				pgError.Code == "23505" {
+			if errors.Is(err, ErrEmailTaken) {
 
 				http.Error(
 					w,
@@ -200,9 +180,6 @@ func RegisterHandler(pool *pgxpool.Pool) http.HandlerFunc {
 
 			return
 		}
-
-		// Never send the password hash to the browser.
-		createdUser.PasswordHash = ""
 
 		w.WriteHeader(
 			http.StatusCreated,
@@ -242,43 +219,40 @@ func LoginHandler(pool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		user, err :=
-			storage.GetUserByEmailFromDB(
-				pool,
-				request.Email,
+		user, err := AuthenticateUser(
+			pool,
+			request.Email,
+			request.Password,
+		)
+
+		if errors.Is(err, ErrInvalidCredentials) {
+
+			http.Error(
+				w,
+				"Invalid email or password",
+				http.StatusUnauthorized,
 			)
 
+			return
+		}
+
+		// Anything that is not a rejected sign-in is a
+		// genuine failure to look the account up. It is
+		// reported as one rather than being disguised as
+		// a wrong password, which is what a handler that
+		// treated every error the same way would do.
 		if err != nil {
 
-			// The same message is used whether the
-			// email or the password was wrong, so an
-			// attacker cannot discover which email
-			// addresses have accounts.
 			http.Error(
 				w,
-				"Invalid email or password",
-				http.StatusUnauthorized,
+				"Could not sign in",
+				http.StatusInternalServerError,
 			)
 
 			return
 		}
 
-		if !utils.CheckPassword(
-			request.Password,
-			user.PasswordHash,
-		) {
-
-			http.Error(
-				w,
-				"Invalid email or password",
-				http.StatusUnauthorized,
-			)
-
-			return
-		}
-
-		token, err :=
-			utils.GenerateSessionToken()
+		err = StartSession(w, user.ID)
 
 		if err != nil {
 
@@ -290,28 +264,6 @@ func LoginHandler(pool *pgxpool.Pool) http.HandlerFunc {
 
 			return
 		}
-
-		expiresAt := time.Now().Add(
-			sessionLifetime,
-		)
-
-		session := models.Session{
-			Token: token,
-
-			UserID: user.ID,
-
-			ExpiresAt: expiresAt,
-		}
-
-		storage.CreateSession(
-			session,
-		)
-
-		writeSessionCookie(
-			w,
-			token,
-			expiresAt,
-		)
 
 		// Never send the password hash to the browser.
 		user.PasswordHash = ""
@@ -332,53 +284,11 @@ func LogoutHandler(pool *pgxpool.Pool) http.HandlerFunc {
 			"application/json",
 		)
 
-		// Look for the session cookie.
-		cookie, err :=
-			r.Cookie("session_token")
-
-		// If there is no cookie, the user is
-		// already logged out and there is
-		// nothing to clean up.
-		if err != nil {
-
-			json.NewEncoder(w).Encode(
-				map[string]string{
-					"message": "Logged out successfully",
-				},
-			)
-
-			return
-		}
-
-		// Remove the session from our
-		// in-memory session storage.
-		storage.DeleteSession(
-			cookie.Value,
-		)
-
-		// Remove the cookie from the browser by
-		// overwriting it with an empty value that
-		// has already expired.
-		http.SetCookie(
-			w,
-			&http.Cookie{
-				Name: "session_token",
-
-				Value: "",
-
-				Path: "/",
-
-				HttpOnly: true,
-
-				Secure: false,
-
-				SameSite: http.SameSiteLaxMode,
-
-				MaxAge: -1,
-
-				Expires: time.Unix(1, 0),
-			},
-		)
+		// Forget the session and clear the cookie. This
+		// is safe whether or not the request carried one,
+		// which covers somebody who has already signed
+		// out and is asking again.
+		EndSession(w, r)
 
 		json.NewEncoder(w).Encode(
 			map[string]string{

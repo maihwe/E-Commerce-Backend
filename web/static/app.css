@@ -1,0 +1,1027 @@
+/*
+ * The storefront stylesheet.
+ *
+ * It is written by hand and served out of the binary, so
+ * there is no framework, no build step and no network
+ * request to a content delivery network. What is in the
+ * repository is exactly what the browser runs, and
+ * changing the accent colour is changing one line.
+ *
+ * The rules are written mobile first. Everything below is
+ * for a phone, and the single media query at the end
+ * loosens the spacing for a wider screen. That order is
+ * deliberate: a marketplace is far more likely to be
+ * opened on a phone than on a desktop, so the phone is the
+ * case that gets the plain rules and the desktop is the
+ * exception.
+ *
+ * There is one thing this design has to work around. The
+ * products table has no image column, so there is no
+ * photograph to show and none is coming. Rather than leave
+ * a grey rectangle where a picture should be, every product
+ * is drawn as a coloured tile carrying its initials, and
+ * the colour is derived from its id. The absence is turned
+ * into the visual system instead of being papered over.
+ */
+
+:root {
+  --ink: #0f1419;
+  --ink-soft: #3d4653;
+  --muted: #6b7480;
+  --line: #e6e8ec;
+  --soft: #f6f7f9;
+  --paper: #fff;
+
+  --accent: #0f766e;
+  --accent-dark: #0b5d57;
+  --accent-soft: #effcf9;
+
+  --warn: #b45309;
+  --warn-soft: #fff7ed;
+  --danger: #b91c1c;
+  --danger-soft: #fef2f2;
+
+  --radius: 12px;
+  --radius-lg: 16px;
+
+  /* Shadows rather than borders do most of the work of
+     separating a card from the page. Two steps, because a
+     card that lifts on hover needs somewhere to lift to. */
+  --shadow-sm: 0 1px 2px rgba(15, 20, 25, 0.06);
+  --shadow: 0 6px 20px rgba(15, 20, 25, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  /* Stops iOS from inflating text when the phone is turned
+     on its side, which otherwise silently changes every
+     measurement on the page. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+
+  color: var(--ink);
+
+  background: var(--paper);
+
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+
+  font-size: 16px;
+
+  line-height: 1.5;
+
+  /* The header is translucent and sticks, so the page needs
+     to be told it can sit underneath it. */
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.022em;
+
+  line-height: 1.2;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 14px;
+}
+
+/* Anything that can be tapped is at least this tall. A
+   target smaller than about 44 pixels is one a thumb
+   misses, and a marketplace is used with a thumb. */
+a.row,
+button,
+.btn,
+.chip {
+  min-height: 44px;
+}
+
+/* ---------- the header ---------- */
+
+/*
+ * The header sticks. On a phone a long catalog is a long
+ * scroll, and the search box is the thing somebody wants
+ * most often and can least afford to scroll back for. It is
+ * translucent so the content passing underneath it stays
+ * faintly visible, which is what tells the eye the page has
+ * moved rather than the header having jumped.
+ */
+.site-header {
+  position: sticky;
+
+  top: 0;
+
+  z-index: 20;
+
+  padding: 10px 14px 12px;
+
+  border-bottom: 1px solid var(--line);
+
+  background: rgba(255, 255, 255, 0.88);
+
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+
+  backdrop-filter: saturate(180%) blur(12px);
+}
+
+.bar {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 12px;
+}
+
+.brand {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  color: var(--ink);
+
+  font-size: 18px;
+
+  font-weight: 700;
+
+  letter-spacing: -0.03em;
+}
+
+/* The mark is a letter in a rounded square. It costs one
+   element and no image, and it is the difference between a
+   page with a word on it and something that reads as a
+   shop with a name. */
+.mark {
+  display: grid;
+
+  place-items: center;
+
+  width: 28px;
+
+  height: 28px;
+
+  border-radius: 9px;
+
+  background: linear-gradient(145deg, var(--accent), #0a4f4a);
+
+  color: #fff;
+
+  font-size: 15px;
+
+  font-weight: 800;
+}
+
+.search {
+  display: flex;
+
+  gap: 8px;
+
+  margin-top: 10px;
+}
+
+.search input {
+  flex: 1;
+
+  /* Without this a long placeholder forces the flex item
+     wider than the screen, which breaks the whole layout
+     on a narrow phone. */
+  min-width: 0;
+}
+
+/* ---------- form controls ---------- */
+
+input[type="search"],
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+
+  padding: 11px 12px;
+
+  border: 1px solid var(--line);
+
+  border-radius: var(--radius);
+
+  background: #fff;
+
+  color: inherit;
+
+  /* 16px is not a decorative choice. A field smaller than
+     this makes iOS zoom the page in when it is focused,
+     and it does not zoom back out. */
+  font-size: 16px;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus,
+.btn:focus,
+a:focus {
+  outline: 2px solid var(--accent);
+
+  outline-offset: 2px;
+}
+
+button,
+.btn {
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  padding: 11px 16px;
+
+  border: 1px solid var(--accent);
+
+  border-radius: var(--radius);
+
+  background: var(--accent);
+
+  color: #fff;
+
+  font-size: 16px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+button:hover,
+.btn:hover {
+  background: var(--accent-dark);
+
+  border-color: var(--accent-dark);
+}
+
+.btn.quiet {
+  background: #fff;
+
+  color: var(--accent);
+}
+
+.btn.quiet:hover {
+  background: var(--soft);
+}
+
+/* Several buttons side by side on a phone should wrap
+   rather than shrink, because a shrunken button is a
+   missed tap. */
+.actions {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 8px;
+
+  margin-top: 18px;
+}
+
+/* ---------- chips ---------- */
+
+/* A strip of filters. It scrolls sideways rather than
+   wrapping, which keeps the list of categories one line
+   tall no matter how many categories there are. */
+.chips {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  overflow-x: auto;
+
+  padding: 12px 14px;
+
+  /* The scrollbar on a desktop would otherwise sit in the
+     middle of the strip. */
+  scrollbar-width: none;
+
+  /* A strip that scrolls sideways should not also bounce
+     the page sideways. */
+  overscroll-behavior-x: contain;
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+/* The first strip sits directly under the header and does
+   not need a rule above it; the second one does. */
+.chips + .chips {
+  border-top: 1px solid var(--line);
+}
+
+.chips-label {
+  flex: none;
+
+  color: var(--muted);
+
+  font-size: 12px;
+
+  font-weight: 600;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.08em;
+}
+
+.chip {
+  display: inline-flex;
+
+  flex: none;
+
+  align-items: center;
+
+  gap: 6px;
+
+  padding: 8px 14px;
+
+  border: 1px solid var(--line);
+
+  border-radius: 999px;
+
+  background: #fff;
+
+  color: var(--ink-soft);
+
+  font-size: 14px;
+
+  font-weight: 500;
+
+  white-space: nowrap;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+
+  color: var(--accent);
+}
+
+.chip.on {
+  border-color: var(--accent);
+
+  background: var(--accent);
+
+  color: #fff;
+
+  font-weight: 600;
+}
+
+.chip .count {
+  color: var(--muted);
+
+  font-size: 12px;
+}
+
+.chip.on .count {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* ---------- the catalog ---------- */
+
+/*
+ * A hero band. It is one line of type and it does the job
+ * the eye wants done at the top of a list: says what this
+ * page is and how much of it there is. Without something
+ * here the catalog opens straight into a grid of tiles and
+ * reads as a search result rather than as a front page.
+ */
+.hero {
+  padding: 20px 14px 4px;
+
+  background:
+    linear-gradient(
+      180deg,
+      var(--accent-soft),
+      rgba(255, 255, 255, 0)
+    );
+}
+
+.hero-kicker {
+  margin: 0;
+
+  color: var(--accent);
+
+  font-size: 12px;
+
+  font-weight: 700;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.08em;
+}
+
+.hero-title {
+  margin: 6px 0 0;
+
+  font-size: 26px;
+
+  font-weight: 700;
+}
+
+/*
+ * The grid. Two columns on a phone is the shape a shopper
+ * already knows from every shop app they have used, and it
+ * shows about four products per screen without any of them
+ * becoming too small to read.
+ */
+.grid {
+  display: grid;
+
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  gap: 12px;
+
+  padding: 14px;
+}
+
+.card {
+  display: flex;
+
+  flex-direction: column;
+
+  overflow: hidden;
+
+  border: 1px solid var(--line);
+
+  border-radius: var(--radius-lg);
+
+  background: var(--paper);
+
+  color: inherit;
+
+  box-shadow: var(--shadow-sm);
+
+  transition:
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow);
+
+  transform: translateY(-2px);
+}
+
+/* ---------- the tiles ---------- */
+
+/*
+ * A tile stands in for a photograph. The gradient is drawn
+ * over whichever flat colour the class below supplies, so
+ * one rule gives every colour depth without eight copies of
+ * the same gradient.
+ */
+.tile {
+  position: relative;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  width: 100%;
+
+  aspect-ratio: 1 / 1;
+
+  background-image: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.18),
+    rgba(0, 0, 0, 0.16)
+  );
+
+  color: #fff;
+
+  font-size: 34px;
+
+  font-weight: 800;
+
+  letter-spacing: 0.04em;
+
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  /* Nothing to select, nothing to drag: it is decoration. */
+  user-select: none;
+}
+
+/*
+ * A drawn icon sits in the same box the initials would.
+ * The drop shadow is doing the same job the text-shadow
+ * does for letters: lifting a white mark off a mid-tone
+ * colour that it would otherwise sink into.
+ */
+.tile svg {
+  width: 52%;
+
+  /* Width alone would let the height follow the viewBox
+     ratio, which is right here but leaves the drawing
+     sized by a number nobody wrote down. Stating it makes
+     the icon's box predictable. */
+  aspect-ratio: 1 / 1;
+
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.22));
+}
+
+/* The product page's tile is not square, so a percentage
+   of the width would overflow it. This is sized off the
+   width still, but small enough to stay well inside a
+   tile that is only five eighths as tall as it is wide. */
+.hero-tile svg {
+  width: 26%;
+}
+
+/*
+ * The palette. Eight colours, and the classes are named by
+ * index because that is what web/tiles.go computes from a
+ * product id. Adding a ninth means changing tileColours in
+ * that file too, or a product will be handed a class that
+ * does not exist and will render as a blank white square.
+ *
+ * They are all dark enough to carry white text at the small
+ * size the initials are drawn.
+ */
+.t0 {
+  background-color: #0f766e;
+}
+
+.t1 {
+  background-color: #4f46e5;
+}
+
+.t2 {
+  background-color: #be123c;
+}
+
+.t3 {
+  background-color: #b45309;
+}
+
+.t4 {
+  background-color: #334155;
+}
+
+.t5 {
+  background-color: #7c3aed;
+}
+
+.t6 {
+  background-color: #047857;
+}
+
+.t7 {
+  background-color: #0e7490;
+}
+
+/* ---------- a card ---------- */
+
+.card-body {
+  display: flex;
+
+  flex: 1;
+
+  flex-direction: column;
+
+  gap: 5px;
+
+  padding: 10px 12px 12px;
+}
+
+.card-name {
+  /* Two lines, then clipped. A product name is not under
+     this page's control, and one long name should not make
+     its card taller than every other card in the row. */
+  display: -webkit-box;
+
+  overflow: hidden;
+
+  -webkit-box-orient: vertical;
+
+  -webkit-line-clamp: 2;
+
+  font-size: 14px;
+
+  font-weight: 600;
+
+  line-height: 1.35;
+}
+
+.card-meta {
+  color: var(--muted);
+
+  font-size: 12px;
+}
+
+.card-foot {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 6px;
+
+  /* Pushes the price to the bottom of the card, so that
+     prices line up across a row of cards whose names are
+     different lengths. */
+  margin-top: auto;
+
+  padding-top: 6px;
+}
+
+.price {
+  font-weight: 700;
+
+  white-space: nowrap;
+}
+
+.pill {
+  flex: none;
+
+  padding: 2px 8px;
+
+  border-radius: 999px;
+
+  background: var(--accent-soft);
+
+  color: var(--accent);
+
+  font-size: 11px;
+
+  font-weight: 600;
+}
+
+.pill.out {
+  background: var(--warn-soft);
+
+  color: var(--warn);
+}
+
+/* ---------- the product page ---------- */
+
+.crumbs {
+  margin: 0 0 14px;
+
+  color: var(--muted);
+
+  font-size: 14px;
+}
+
+.crumbs .sep {
+  margin: 0 4px;
+}
+
+/* The tile, blown up. This is the only place a product is
+   shown large, so it is the one place the initials are big
+   enough to read as a design rather than as a placeholder. */
+.hero-tile {
+  aspect-ratio: 16 / 10;
+
+  margin-bottom: 18px;
+
+  border-radius: var(--radius-lg);
+
+  font-size: 64px;
+}
+
+.product-name {
+  margin: 0;
+
+  font-size: 26px;
+}
+
+.rating {
+  margin: 8px 0 0;
+
+  font-size: 15px;
+}
+
+.stars {
+  color: #d97706;
+
+  /* The stars are characters rather than an image or an
+     icon font, so they need a little room to breathe. */
+  letter-spacing: 1px;
+}
+
+.price.big {
+  margin: 10px 0 0;
+
+  font-size: 30px;
+
+  letter-spacing: -0.025em;
+}
+
+.stock {
+  display: inline-block;
+
+  margin: 12px 0 0;
+
+  padding: 4px 12px;
+
+  border-radius: 999px;
+
+  background: var(--accent-soft);
+
+  color: var(--accent);
+
+  font-size: 13px;
+
+  font-weight: 600;
+}
+
+.stock.out {
+  background: var(--warn-soft);
+
+  color: var(--warn);
+}
+
+.description {
+  margin: 16px 0 0;
+
+  color: var(--ink-soft);
+
+  line-height: 1.6;
+}
+
+.notice {
+  margin: 18px 0 0;
+
+  padding: 12px 14px;
+
+  border-left: 3px solid var(--warn);
+
+  border-radius: 0 var(--radius) var(--radius) 0;
+
+  background: var(--warn-soft);
+
+  color: #78350f;
+
+  font-size: 14px;
+}
+
+/* ---------- shared page furniture ---------- */
+
+.pad {
+  padding: 16px 14px;
+}
+
+.empty {
+  text-align: center;
+}
+
+.empty h1 {
+  margin: 8px 0 6px;
+
+  font-size: 20px;
+}
+
+.empty p {
+  margin: 0 auto;
+
+  max-width: 34ch;
+}
+
+.pager {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 12px;
+
+  padding: 8px 14px 32px;
+
+  font-size: 14px;
+}
+
+.pager-link {
+  padding: 10px 14px;
+
+  border: 1px solid var(--line);
+
+  border-radius: var(--radius);
+
+  background: #fff;
+
+  color: var(--accent);
+
+  font-weight: 600;
+
+  box-shadow: var(--shadow-sm);
+}
+
+.pager-link:hover {
+  border-color: var(--accent);
+}
+
+.site-footer {
+  padding: 24px 14px 36px;
+
+  border-top: 1px solid var(--line);
+
+  color: var(--muted);
+
+  font-size: 13px;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+/* ---------- the account area ---------- */
+
+.account {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  /* Signing in is a link, signing out is a button. Both
+     sit here, so both are set to the same size and are
+     not allowed to wrap onto a second line, which would
+     make the header jump as somebody signs in. */
+  flex: none;
+
+  font-size: 14px;
+}
+
+.who {
+  max-width: 12ch;
+
+  overflow: hidden;
+
+  color: var(--muted);
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+form.inline {
+  display: inline;
+
+  margin: 0;
+}
+
+/* A button that reads as a link. It keeps the 44 pixel
+   minimum height the other controls have, so it is still
+   comfortable to hit with a thumb, but drops the border
+   and the fill. */
+button.link {
+  padding: 0 2px;
+
+  border: 0;
+
+  background: none;
+
+  color: var(--accent);
+
+  font-size: 14px;
+
+  font-weight: 600;
+
+  text-decoration: underline;
+}
+
+button.link:hover {
+  background: none;
+
+  color: var(--accent-dark);
+}
+
+/* ---------- forms ---------- */
+
+.narrow {
+  max-width: 420px;
+}
+
+.stack {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 6px;
+}
+
+.stack label {
+  margin-top: 12px;
+
+  font-size: 14px;
+
+  font-weight: 600;
+}
+
+.stack button {
+  margin-top: 20px;
+}
+
+/* A message about what somebody just typed. It sits above
+   the form rather than beside the offending field, because
+   on a phone the keyboard covers whatever is below the
+   field being typed into. */
+.alert {
+  margin: 14px 0 0;
+
+  padding: 12px 14px;
+
+  border-left: 3px solid var(--danger);
+
+  border-radius: 0 var(--radius) var(--radius) 0;
+
+  background: var(--danger-soft);
+
+  color: #7f1d1d;
+
+  font-size: 14px;
+}
+
+/* ---------- wider screens ---------- */
+
+/*
+ * One breakpoint, and only for breathing room and one extra
+ * column. The layout does not change shape, because a grid
+ * that works on a phone works on a desktop too, and a
+ * second layout is a second thing to keep correct.
+ */
+@media (min-width: 640px) {
+
+  .site-header,
+  .chips,
+  .pad,
+  .hero,
+  .grid,
+  .pager,
+  .site-footer {
+    padding-left: 24px;
+
+    padding-right: 24px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    gap: 16px;
+  }
+
+  .chips,
+  .site-header,
+  .site-footer,
+  .page {
+    max-width: 900px;
+
+    margin-left: auto;
+
+    margin-right: auto;
+  }
+
+  .hero,
+  .grid,
+  .pager {
+    max-width: 900px;
+
+    margin-left: auto;
+
+    margin-right: auto;
+  }
+
+  .site-footer {
+    max-width: none;
+  }
+
+  .hero-title {
+    font-size: 32px;
+  }
+}

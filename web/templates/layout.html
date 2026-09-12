@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f766e">
+<title>{{if .Title}}{{.Title}} · {{end}}Mart</title>
+<link rel="stylesheet" href="/shop/static/app.css">
+</head>
+<body>
+
+<!--
+  The header is the same on every page, which is why it
+  lives here rather than in each page file. A page supplies
+  only its own body, through the "content" template below.
+-->
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="/shop">
+      <span class="mark" aria-hidden="true">M</span>Mart
+    </a>
+
+    {{if .SignedIn}}
+    <div class="account">
+      <span class="who">{{.User.Name}}</span>
+
+      <!--
+        Signing out is a POST rather than a link, because
+        it changes something. A GET that ends a session
+        can be triggered by any image tag on any page,
+        which is a way of signing people out at will.
+      -->
+      <form method="post" action="/shop/logout" class="inline">
+        <button type="submit" class="link">Sign out</button>
+      </form>
+    </div>
+    {{else}}
+    <a class="account" href="/shop/login">Sign in</a>
+    {{end}}
+  </div>
+
+  <!--
+    A plain GET form. It needs no JavaScript, and the
+    result is a real address that can be bookmarked or
+    shared, which is what makes a search worth doing on a
+    phone.
+  -->
+  <form class="search" method="get" action="/shop" role="search">
+    <input
+      type="search"
+      name="q"
+      value="{{.Query}}"
+      placeholder="Search products"
+      aria-label="Search products">
+    <button type="submit">Search</button>
+  </form>
+</header>
+
+<main class="page">
+{{template "content" .}}
+</main>
+
+<footer class="site-footer">
+  <p>Prices in naira. Stock is counted from the inventory ledger rather than stored.</p>
+</footer>
+
+</body>
+</html>

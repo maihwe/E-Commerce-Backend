@@ -10,6 +10,7 @@ import (
 	"e-commerce-backend/database"
 	"e-commerce-backend/handlers"
 	"e-commerce-backend/services"
+	"e-commerce-backend/web"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -91,6 +92,20 @@ func main() {
 	registerChatRoutes(mux, pool, hub, chatOrigins)
 
 	registerAdminRoutes(mux, pool)
+
+	// The storefront is a second view of the same
+	// marketplace, and it is served by this process rather
+	// than a separate one because the session map lives in
+	// memory here. A second process would have a map of
+	// its own and would not recognise anybody's sign-in.
+	err = web.RegisterWebRoutes(mux, pool)
+
+	if err != nil {
+		log.Fatalf(
+			"could not build the storefront: %v",
+			err,
+		)
+	}
 
 	mux.HandleFunc(
 		"GET /health",

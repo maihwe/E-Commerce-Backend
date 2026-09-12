@@ -1,0 +1,63 @@
+{{define "content"}}
+
+<section class="pad narrow">
+
+  <h1>Create an account</h1>
+
+  {{if .Error}}
+  <p class="alert" role="alert">{{.Error}}</p>
+  {{end}}
+
+  <form method="post" action="/shop/register" class="stack">
+
+    <label for="name">Your name</label>
+    <input
+      id="name"
+      type="text"
+      name="name"
+      value="{{.Name}}"
+      autocomplete="name"
+      required>
+
+    <label for="email">Email</label>
+    <input
+      id="email"
+      type="email"
+      name="email"
+      value="{{.Email}}"
+      autocomplete="email"
+      autocapitalize="none"
+      spellcheck="false"
+      required>
+
+    <label for="password">Password</label>
+    <input
+      id="password"
+      type="password"
+      name="password"
+      autocomplete="new-password"
+      required>
+
+    <label for="role">I want to</label>
+    <select id="role" name="role">
+      <option value="buyer">Buy things</option>
+      <option value="seller">Sell things</option>
+    </select>
+
+    <!--
+      There is no admin option here, and there is no way to
+      ask for one. The roles offered are exactly the roles
+      a registration can produce; admin rights are granted
+      by an existing admin, never claimed.
+    -->
+
+    <button type="submit">Create account</button>
+  </form>
+
+  <p class="muted">
+    Already have an account? <a href="/shop/login">Sign in</a>.
+  </p>
+
+</section>
+
+{{end}}
