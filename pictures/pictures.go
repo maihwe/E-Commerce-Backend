@@ -124,14 +124,15 @@ func isImage(name string) bool {
 // Attachment is one picture that a pass over the folder
 // put in place.
 //
-// It carries the product's id and slug as well as the
-// file name, because attaching a picture is not the only
-// thing that happens to one. The picture is also looked
-// at, to work out which category its product belongs in,
-// and that step needs to know which product it is
-// looking at. Doing it from this record rather than by
-// re-reading the folder is what keeps the two steps
-// talking about the same set of pictures.
+// It carries the product's id, slug and category as well
+// as the file name, because attaching a picture is not
+// the only thing that happens to one. The picture is also
+// looked at, to work out which category its product
+// belongs in, and that step needs to know which product
+// it is looking at and where that product sits now.
+// Doing it from this record rather than by re-reading the
+// folder is what keeps the two steps talking about the
+// same set of pictures.
 type Attachment struct {
 
 	// Name is the file, as it was found.
@@ -143,6 +144,20 @@ type Attachment struct {
 	// Slug is that product's slug, which is the name the
 	// file was matched by and the name worth printing.
 	Slug string
+
+	// CategoryID is the category the product was in when
+	// the picture was attached.
+	//
+	// It is carried here rather than looked up again
+	// because the lookup has already happened: this
+	// record is built from the product row the scan read
+	// to find out whose picture this is, and the category
+	// came back with it. Classification uses it to tell a
+	// product nobody has sorted from one its seller
+	// placed, and asking the database again there would
+	// be a second query for a question the first one
+	// already answered.
+	CategoryID int
 }
 
 // String renders the attachment the way the log prints
@@ -396,6 +411,8 @@ func Attach(
 					ProductID: product.ID,
 
 					Slug: product.Slug,
+
+					CategoryID: product.CategoryID,
 				},
 			)
 		}

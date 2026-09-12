@@ -514,6 +514,24 @@ belongs to, and the product is moved to that one. That is the difference between
 a shop whose pictures are right and a shop that is right in the way a shopper
 notices, because the categories are the buttons they browse with.
 
+**The picture only sorts what nobody has sorted.** `category_id` is `NOT NULL` and
+the create handler refuses a product that arrives without one, so there is no such
+thing as a listing with a blank category for a picture to fill in. What there is
+instead is the seeded catch-all, `everything-else`, whose whole meaning is "not
+decided yet": a product parked there is moved to the category the picture
+suggests. A product in any other category is left where its seller put it — not
+written, not read, not sent. A picture is one photograph; the seller had the thing
+in their hand, and a model that has seen one photograph is in no position to
+overrule them. The cost is that a product sitting in the wrong *real* category
+stays there, which is the seller's edit to make and the same one they would have
+had to make if the picture had guessed wrong.
+
+That rule lives in one small function, `maySort`, beside the column that makes it
+necessary, and a shop that renames or deletes its catch-all sorts nothing at all —
+conservatively, since the alternative is a pass that treats every category as fair
+game the moment somebody edits a name. The report counts those pictures rather
+than falling silent, so the reason is on screen instead of being guessed at.
+
 **Only the pictures a scan has just attached are looked at.** A picture that was
 already in place was counted under `Skipped`, so restarting the server sends
 nothing anywhere and costs nothing. There is no "classified" flag and no table of

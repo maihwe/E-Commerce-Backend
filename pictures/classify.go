@@ -12,7 +12,10 @@
 //
 // So the picture is looked at. A model is asked which of
 // the shop's categories it belongs to, and the product is
-// moved to that one.
+// moved to that one -- but only when nobody has sorted it
+// already. The rule is unsortedSlug's, and it is the
+// difference between a pass that helps and one that
+// quietly overrules the person who runs the shop.
 package pictures
 
 import (
@@ -117,10 +120,76 @@ type ClassificationReport struct {
 	// cannot be sent, which is the one gap this pass
 	// cannot close by trying harder.
 	NotSent []string
+
+	// LeftAlone counts the pictures that were not sent at
+	// all, because their product already sits in a
+	// category somebody chose. The rule is unsortedSlug's.
+	//
+	// It is a number rather than a list for the same
+	// reason Report.Skipped is one: on a catalog whose
+	// products are all properly sorted it is every
+	// picture there is, and naming them all would bury
+	// the lines that matter under lines saying nothing
+	// happened.
+	LeftAlone int
+}
+
+// unsortedSlug is the category that means nobody has
+// decided yet.
+//
+// It is the seeded catch-all, "Everything Else", and it
+// is what makes this pass safe to run without being
+// asked. Every product is created with a category its
+// seller picked: products.category_id is NOT NULL and
+// the create handler refuses a request that leaves it
+// out. So there is no such thing as a product with a
+// blank category for a picture to fill in. The nearest
+// thing is this bucket, whose whole meaning is "not
+// sorted", and it is the only category a picture is
+// allowed to move a product out of.
+//
+// The rule that follows from it is the difference
+// between a helper and a nuisance: the model sorts what
+// nobody has sorted, and leaves alone what somebody has.
+// A seller who put a product in Fashion chose that with
+// the thing in their hand, and a model that has seen one
+// photograph is in no position to overrule them. The
+// picture decides only where nobody has decided.
+//
+// The cost is that a product parked in the wrong real
+// category stays there. That edit belongs to the seller,
+// and it is the same one they would have had to make if
+// the picture had guessed wrong.
+const unsortedSlug = "everything-else"
+
+// maySort reports whether a picture is allowed to move
+// its product into the category it suggests.
+//
+// It is a function of its own for the same reason
+// slugForFile is one: it is the rule this package is
+// judged on, and a rule is worth being able to read and
+// test without a database and a model in the room.
+//
+// A zero unsortedID means this shop has no catch-all:
+// either it was renamed, or it was deleted, or the
+// categories table was replaced by something that does
+// not have one. Nothing is marked unsorted in that case,
+// so nothing is moved. Category ids are SERIAL and begin
+// at 1, so zero is not a category that could be chosen
+// by accident -- it is the same "unset" the catalog
+// filter uses when it tests a category id against zero.
+func maySort(attachment Attachment, unsortedID int) bool {
+
+	if unsortedID == 0 {
+		return false
+	}
+
+	return attachment.CategoryID == unsortedID
 }
 
 // Classify looks at each newly attached picture and moves
-// its product into the category the picture suggests.
+// its product into the category the picture suggests,
+// where nobody has already chosen one.
 //
 // It is given the attachments from one pass over the
 // folder rather than the folder itself, and that is the
@@ -192,7 +261,28 @@ func Classify(
 		bySlug[category.Slug] = category.ID
 	}
 
+	// A shop with no catch-all has marked nothing as
+	// unsorted, and zero is what bySlug hands back for a
+	// category that is not there. The count in the report
+	// is what stops that from looking like a classifier
+	// that is simply broken: an operator who sees every
+	// picture left alone, rather than nothing at all, has
+	// been told which of the two is happening.
+	unsortedID := bySlug[unsortedSlug]
+
 	for _, attachment := range attachments {
+
+		// The check comes before the picture is read and
+		// before anything is sent, so a product somebody
+		// has already sorted costs nothing at all: not a
+		// read, not a call, and not a line in the report
+		// beyond the count.
+		if !maySort(attachment, unsortedID) {
+
+			report.LeftAlone++
+
+			continue
+		}
 
 		mediaType, known := mediaTypeFor(attachment.Name)
 
@@ -307,22 +397,31 @@ func Classify(
 // ordinary case -- a startup where no picture was added --
 // and a line saying so on every start would be noise
 // around the lines that matter.
+//
+// A pass that only met pictures it was not allowed to
+// sort does write the summary, with the count of them.
+// That is deliberate. An operator who has just added
+// photographs and sees nothing sorted at all is owed the
+// reason, and "already sorted by hand" is the whole of
+// it.
 func (r ClassificationReport) Log() {
 
 	if len(r.Sorted) == 0 &&
 		len(r.Unclear) == 0 &&
 		len(r.Failed) == 0 &&
-		len(r.NotSent) == 0 {
+		len(r.NotSent) == 0 &&
+		r.LeftAlone == 0 {
 
 		return
 	}
 
 	log.Printf(
-		"pictures: %d sorted into a category, %d unclear, %d failed, %d not looked at",
+		"pictures: %d sorted into a category, %d unclear, %d failed, %d not looked at, %d already sorted by hand",
 		len(r.Sorted),
 		len(r.Unclear),
 		len(r.Failed),
 		len(r.NotSent),
+		r.LeftAlone,
 	)
 
 	for _, line := range r.Sorted {

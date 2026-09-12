@@ -232,6 +232,138 @@ func TestMediaTypeFor(t *testing.T) {
 	}
 }
 
+// TestMaySort pins the rule that decides whether a
+// picture is allowed to move its product.
+//
+// This is the safety property of the classification pass,
+// and it is worth being exact about what it protects.
+// products.category_id is NOT NULL and the create handler
+// refuses a product that arrives without a category, so
+// every listing already sits somewhere its seller put it.
+// The only thing a picture may do is take a product out
+// of the catch-all, whose meaning is "nobody has decided
+// yet". A picture is never allowed to overrule a person.
+//
+// The last case is the one that decides the design. A
+// shop with no catch-all gets nothing sorted: the
+// conservative direction is the right one, because the
+// alternative is a pass that treats every category as
+// fair game the moment somebody renames a category. The
+// report counts the pictures it left alone, so an
+// operator in that position is told why nothing happened
+// rather than left to guess.
+func TestMaySort(t *testing.T) {
+
+	// Standing in for real category ids. What matters
+	// about the numbers is only that neither is zero,
+	// because zero is how "there is no catch-all" is
+	// spelled.
+	const (
+		unsorted = 7
+
+		fashion = 3
+	)
+
+	attachment := func(categoryID int) Attachment {
+
+		return Attachment{
+			Name: "cast-iron-pot.jpg",
+
+			ProductID: 1,
+
+			Slug: "cast-iron-pot",
+
+			CategoryID: categoryID,
+		}
+	}
+
+	cases := []struct {
+		name string
+
+		categoryID int
+
+		unsortedID int
+
+		want bool
+	}{
+
+		// The product nobody has sorted, which is the
+		// whole of what this pass is for.
+		{
+			"a product in the catch-all is sorted",
+
+			unsorted,
+
+			unsorted,
+
+			true,
+		},
+
+		// A seller who chose. The picture has an opinion
+		// and does not get to act on it.
+		{
+			"a product in a chosen category is left alone",
+
+			fashion,
+
+			unsorted,
+
+			false,
+		},
+
+		// No catch-all in this shop, so nothing is marked
+		// as unsorted and nothing is moved.
+		{
+			"no catch-all means nothing is sorted",
+
+			fashion,
+
+			0,
+
+			false,
+		},
+
+		// The case the first guard exists for. Without
+		// it, "category 0 equals catch-all 0" would be
+		// true, and a shop that deleted its catch-all
+		// would sort everything rather than nothing --
+		// the opposite of what the rule is for. No
+		// product has category zero, so this cannot come
+		// up in the database; it comes up when a missing
+		// category is represented by the zero value, which
+		// is exactly what the map lookup produces.
+		{
+			"a missing catch-all does not match a missing category",
+
+			0,
+
+			0,
+
+			false,
+		},
+	}
+
+	for _, test := range cases {
+
+		got := maySort(
+			attachment(test.categoryID),
+			test.unsortedID,
+		)
+
+		if got != test.want {
+
+			t.Errorf(
+				"%s: maySort(category %d, catch-all %d) = %v, want %v",
+				test.name,
+				test.categoryID,
+				test.unsortedID,
+				got,
+				test.want,
+			)
+		}
+	}
+}
+
 // TestServeServesPicturesAndNothingElse asks the handler
 // what it will hand out.
 //

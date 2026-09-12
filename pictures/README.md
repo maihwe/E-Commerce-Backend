@@ -50,8 +50,29 @@ stops pointing at a picture that is not there.
 ## Sorted into a category
 
 Adding a picture does a second thing besides attaching
-it. The picture is looked at, and the product is moved
-into the category the picture suggests.
+it. The picture is looked at, and if the product is
+sitting in **Everything Else**, it is moved into the
+category the picture suggests.
+
+That is the whole rule. Every product already has a
+category, because you picked one when you listed it and
+the shop will not accept a product without one. So the
+only listing a picture can improve is one nobody has
+sorted yet, and *Everything Else* is how you say "not
+sorted yet" — it is in the seeded categories for exactly
+this.
+
+A product you put in **Fashion** stays in Fashion. The
+picture is one photograph; you had the thing in your
+hand. If it turns out you were wrong and the picture was
+right, that edit is yours to make — and it is the same
+edit you would have made if the picture had guessed
+wrong.
+
+One consequence worth knowing: if you rename or delete
+the *Everything Else* category, nothing is sorted at
+all, because nothing is marked as unsorted. The count in
+the report is what tells you that is what happened.
 
 Only the pictures that were **just added** are looked
 at. A picture that is already in place is counted under
@@ -78,13 +99,16 @@ cannot invent a category.
 
 It says what it did:
 
-    pictures: 2 sorted into a category, 0 unclear, 0 failed, 0 not looked at
+    pictures: 2 sorted into a category, 0 unclear, 0 failed, 0 not looked at, 3 already sorted by hand
     pictures: sorted cast-iron-pot -> home-kitchen
     pictures: sorted desk-lamp was already home-kitchen
 
-`unclear` means the picture matched none of the
-categories. `failed` means the picture could not be read
-or the call did not go through, and prints why.
+`already sorted by hand` counts the pictures whose
+product was in a category you had chosen, so they were
+never sent anywhere. `unclear` means the picture matched
+none of the categories. `failed` means the picture could
+not be read or the call did not go through, and prints
+why.
 
 One format is left out. The model is sent JPEG, PNG, GIF
 and WebP, so an **AVIF** picture is attached and shown
