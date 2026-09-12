@@ -15,13 +15,25 @@
  * case that gets the plain rules and the desktop is the
  * exception.
  *
- * There is one thing this design has to work around. The
- * products table has no image column, so there is no
- * photograph to show and none is coming. Rather than leave
- * a grey rectangle where a picture should be, every product
- * is drawn as a coloured tile carrying its initials, and
- * the colour is derived from its id. The absence is turned
- * into the visual system instead of being papered over.
+ * There is one thing this design has to work around. Not
+ * every product has a picture. A product that has one
+ * shows it; a product that has none is drawn instead, as
+ * a coloured tile carrying its category's icon or its own
+ * initials, with the colour derived from its id.
+ *
+ * That fallback is the reason the shop looks finished
+ * before anybody has taken a photograph of anything.
+ * Pictures arrive in a folder on disk, and until they do
+ * the grid is a grid of drawings rather than a grid of
+ * grey rectangles, so filling the folder in improves a
+ * shop that was already whole instead of being the thing
+ * that finally makes it work.
+ *
+ * The other photograph in the shop is the hero band at
+ * the top of the catalog. That one is a picture of the
+ * market rather than of anything for sale in it, so it
+ * is not standing in for a product picture that does not
+ * exist.
  */
 
 :root {
@@ -449,6 +461,380 @@ button:hover,
 }
 
 /*
+ * The hero, when there is a photograph to put in it.
+ *
+ * The band stops being a tint that fades into the page and
+ * becomes a picture. Everything else about it is unchanged:
+ * it is still the thing that says what this page is before
+ * the grid begins, and it still carries the same two lines
+ * of text.
+ *
+ * The scrim is not decoration. The photograph has a bright
+ * coppery middle and near-white highlights on the handles,
+ * and the title is white: without a gradient between the
+ * two, the words would vanish into whichever pan they
+ * happened to land on. It darkens towards the bottom,
+ * because that is where the text sits.
+ */
+.hero-photo {
+  /* A height, rather than letting the band be as tall as
+     its own text. The picture should be the same shape on
+     every phone, and the text is one digit long on a small
+     catalog and four on a large one. */
+  min-height: 200px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content: flex-end;
+
+  padding-bottom: 16px;
+
+  color: #fff;
+
+  /* Two layers, the scrim over the picture. The position
+     is 42 per cent down rather than centred because that
+     is where the pots are: the top of the frame is blurred
+     wall, and the bottom is the edge of the stall. */
+  background-image:
+    linear-gradient(
+      180deg,
+      rgba(8, 12, 15, 0.18) 0%,
+      rgba(8, 12, 15, 0.36) 46%,
+      rgba(8, 12, 15, 0.78) 100%
+    ),
+    url("/shop/static/img/hero.jpg");
+
+  background-size: cover;
+
+  background-position: center 42%;
+
+  background-repeat: no-repeat;
+}
+
+/*
+ * White on a photograph wants more than a scrim, because a
+ * scrim is a gradient and the title can land anywhere along
+ * it. The shadow is what keeps the text readable at the
+ * point where the two happen to meet.
+ */
+.hero-photo .hero-kicker {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.hero-photo .hero-title {
+  color: #fff;
+
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+/*
+ * The hero, when it has several pictures to cycle
+ * through.
+ *
+ * It is the same band as the one above with the pictures
+ * stacked behind the words instead of painted onto the
+ * band itself, which is what makes it possible to fade
+ * from one to the next: a background image can be
+ * replaced but it cannot be dissolved, and two elements
+ * can.
+ *
+ * There is no JavaScript here and there is not going to
+ * be. A crossfade is an opacity animation on a timer, and
+ * CSS has been able to do that on its own for years. The
+ * cost of doing it this way is that the stylesheet has to
+ * name the number of slides, which is why there are rules
+ * below for two, three and four and not a general one.
+ * See heroSlides in web/catalog.go.
+ *
+ * A dark band sits underneath the pictures. During a
+ * crossfade the outgoing picture and the incoming one are
+ * each partly transparent, so what shows through the pair
+ * of them has to be something deliberate rather than
+ * whatever the page happens to be.
+ */
+.hero-rotate {
+  --hero-cycle: 24s;
+
+  position: relative;
+
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content: flex-end;
+
+  min-height: 200px;
+
+  padding-bottom: 16px;
+
+  background: #0b1114;
+
+  color: #fff;
+}
+
+/*
+ * One picture in the stack.
+ *
+ * The opacity is deliberately not set here. It is left at
+ * its ordinary value of one, and the animation is what
+ * takes the pictures away. That is what makes the whole
+ * thing safe: if the number of slides ever grows past the
+ * rules below, nothing animates and every picture stays
+ * visible, so the band shows a still photograph rather
+ * than going black. A hero that is not cycling is a
+ * disappointment; a hero that is a black rectangle looks
+ * like a broken site.
+ *
+ * fill-mode backwards is what hides a picture until its
+ * turn comes. Without it the delay before a picture's
+ * first cycle would be spent with the picture fully
+ * visible, and all four would be piled on top of each
+ * other at the moment the page opened.
+ */
+.hero-slide {
+  position: absolute;
+
+  inset: 0;
+
+  animation-duration: var(--hero-cycle);
+
+  animation-iteration-count: infinite;
+
+  animation-timing-function: linear;
+
+  animation-fill-mode: backwards;
+}
+
+.hero-slide img {
+  width: 100%;
+
+  height: 100%;
+
+  object-fit: cover;
+
+  /* The same framing the single photograph uses, and for
+     the same reason: these are pictures of things, and
+     the top of a photograph is usually the part with the
+     least in it. */
+  object-position: center 42%;
+}
+
+/*
+ * The scrim, one per picture rather than one over the
+ * whole band.
+ *
+ * Per picture is the point. During a crossfade the two
+ * pictures are at partial opacity, and a scrim that was
+ * its own layer over the pair would darken the overlap
+ * twice as much as either picture alone, so the band
+ * would visibly dip every time it changed. Carrying the
+ * scrim with each picture means the pair crossfades as
+ * one image, which is what the eye expects.
+ */
+.hero-slide::after {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  background: linear-gradient(
+    180deg,
+    rgba(8, 12, 15, 0.18) 0%,
+    rgba(8, 12, 15, 0.36) 46%,
+    rgba(8, 12, 15, 0.78) 100%
+  );
+}
+
+/*
+ * The words come back up over the pictures.
+ *
+ * An absolutely positioned element paints above ordinary
+ * ones, so the slides would cover the kicker and the
+ * title without this. Giving the two of them a position
+ * puts them in the same layer as the slides, where the
+ * one written later in the page wins, and the text is
+ * written after because it is written after in the
+ * markup.
+ */
+.hero-rotate .hero-kicker,
+.hero-rotate .hero-title {
+  position: relative;
+}
+
+/* How long one full turn of the band takes. Each picture
+   gets six seconds of it. */
+.hero-n-2 {
+  --hero-cycle: 12s;
+}
+
+.hero-n-3 {
+  --hero-cycle: 18s;
+}
+
+.hero-n-4 {
+  --hero-cycle: 24s;
+}
+
+/* Which crossfade to use. The three are the same shape
+   drawn at three different sizes, because the width of a
+   picture's turn is a percentage and a percentage of
+   three slides is not a percentage of four. */
+.hero-n-2 .hero-slide {
+  animation-name: hero-fade-2;
+}
+
+.hero-n-3 .hero-slide {
+  animation-name: hero-fade-3;
+}
+
+.hero-n-4 .hero-slide {
+  animation-name: hero-fade-4;
+}
+
+/*
+ * When each picture takes its turn.
+ *
+ * A picture is held back by a negative offset into the
+ * cycle, so the second picture is already a quarter of
+ * the way through its animation at the moment the first
+ * one starts. The first picture needs no rule: its delay
+ * is zero.
+ */
+.hero-n-2 .hero-slot-1 {
+  animation-delay: calc(var(--hero-cycle) / 2);
+}
+
+.hero-n-3 .hero-slot-1 {
+  animation-delay: calc(var(--hero-cycle) / 3);
+}
+
+.hero-n-3 .hero-slot-2 {
+  animation-delay: calc(var(--hero-cycle) / 3 * 2);
+}
+
+.hero-n-4 .hero-slot-1 {
+  animation-delay: calc(var(--hero-cycle) / 4);
+}
+
+.hero-n-4 .hero-slot-2 {
+  animation-delay: calc(var(--hero-cycle) / 4 * 2);
+}
+
+.hero-n-4 .hero-slot-3 {
+  animation-delay: calc(var(--hero-cycle) / 4 * 3);
+}
+
+/*
+ * The crossfades themselves.
+ *
+ * Read the numbers as a share of the whole cycle. With
+ * four pictures each one's turn is a quarter of it, so a
+ * picture fades up over the first four per cent, holds
+ * until twenty-five, and is gone by twenty-nine.
+ *
+ * That last figure is the important one. The fade does
+ * not finish where the turn finishes: it runs a little
+ * past it, into the next picture's turn. That overlap is
+ * what makes it a crossfade. If each picture finished
+ * fading exactly when the next began, there would be a
+ * moment when the outgoing one was at nothing and the
+ * incoming one was still at nothing, and the band would
+ * blink dark between every pair. Overlapping them keeps
+ * the two opacities adding up to one the whole way
+ * across.
+ *
+ * Two and three pictures are the same shape with the
+ * quarters replaced by halves and thirds, and the overlap
+ * made a little wider because there is more room for it.
+ */
+@keyframes hero-fade-2 {
+  0% {
+    opacity: 0;
+  }
+
+  7% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  57% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes hero-fade-3 {
+  0% {
+    opacity: 0;
+  }
+
+  5% {
+    opacity: 1;
+  }
+
+  33.333% {
+    opacity: 1;
+  }
+
+  38.333% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes hero-fade-4 {
+  0% {
+    opacity: 0;
+  }
+
+  4% {
+    opacity: 1;
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  29% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/*
+ * Switching the animation off leaves every picture at its
+ * ordinary opacity, which is one, so the band settles on
+ * the last of them and stands still.
+ *
+ * That is the whole handling. Somebody who has asked
+ * their system to stop things moving has asked for the
+ * pictures to stay where they are, not for the band to
+ * disappear, and this gives them a still photograph
+ * without needing a second design.
+ */
+@media (prefers-reduced-motion: reduce) {
+
+  .hero-slide {
+    animation: none;
+  }
+}
+
+/*
  * The grid. Two columns on a phone is the shape a shopper
  * already knows from every shop app they have used, and it
  * shows about four products per screen without any of them
@@ -495,10 +881,11 @@ button:hover,
 /* ---------- the tiles ---------- */
 
 /*
- * A tile stands in for a photograph. The gradient is drawn
- * over whichever flat colour the class below supplies, so
- * one rule gives every colour depth without eight copies of
- * the same gradient.
+ * A tile stands in for a photograph, and shows one when
+ * there is one. The gradient is drawn over whichever flat
+ * colour the class below supplies, so one rule gives
+ * every colour depth without eight copies of the same
+ * gradient.
  */
 .tile {
   position: relative;
@@ -508,6 +895,13 @@ button:hover,
   align-items: center;
 
   justify-content: center;
+
+  /* A picture is laid over the whole tile, and the tile
+     that has rounded corners is the one on the product
+     page. Without this the photograph would be cropped
+     square and would sit in the corner of its own
+     rounded frame. */
+  overflow: hidden;
 
   width: 100%;
 
@@ -531,6 +925,33 @@ button:hover,
 
   /* Nothing to select, nothing to drag: it is decoration. */
   user-select: none;
+}
+
+/*
+ * The photograph, when a product has one.
+ *
+ * It is taken out of the flow and stretched over the
+ * whole tile rather than being added as a third thing
+ * that the flexbox centres. The tile's height is set by
+ * its aspect ratio and not by what is inside it, so an
+ * image left in the flow would be sized by the tile and
+ * would then try to size the tile back.
+ *
+ * cover crops rather than distorts. Pictures arrive from
+ * whoever took them and are not all the same shape, and
+ * a photograph squeezed to fit a square reads as a
+ * mistake in a way that a cropped one does not.
+ */
+.tile-photo {
+  position: absolute;
+
+  inset: 0;
+
+  width: 100%;
+
+  height: 100%;
+
+  object-fit: cover;
 }
 
 /*
@@ -1023,5 +1444,12 @@ button.link:hover {
 
   .hero-title {
     font-size: 32px;
+  }
+
+  /* The band is wider here, so it can afford to be taller
+     without turning into a slab. */
+  .hero-photo,
+  .hero-rotate {
+    min-height: 260px;
   }
 }

@@ -31,7 +31,44 @@
      href="{{.SortURL "rating"}}">Best rated</a>
 </nav>
 
+<!--
+  The band at the top of the catalog. It has three
+  states.
+
+  While a search is running it is a plain tint. The
+  pictures are of specific products, and ones with
+  nothing to do with what was asked for are worse than
+  no picture at all.
+
+  With no search, and pictures to show, it cycles
+  through the first few of them. The pictures are
+  products that are actually on this page, so the band
+  shows what the shop has and follows whatever ordering
+  the shopper asked for.
+
+  With no search and nothing photographed, it falls back
+  to the picture of the market, which is the one
+  photograph in the repository rather than in a folder.
+  A shop where nobody has taken a photograph yet should
+  still open with something to look at.
+
+  The slides come first in the markup because the
+  stylesheet staggers them by position. Nothing here
+  depends on where they are, since each also carries its
+  own slot class.
+-->
+{{if .Query}}
 <section class="hero">
+{{else if .HeroSlides}}
+<section class="hero hero-rotate hero-n-{{len .HeroSlides}}">
+  {{range $slot, $picture := .HeroSlides}}
+  <span class="hero-slide hero-slot-{{$slot}}">
+    <img src="{{$picture}}" alt="" decoding="async">
+  </span>
+  {{end}}
+{{else}}
+<section class="hero hero-photo">
+{{end}}
   <p class="hero-kicker">
     {{if .Query}}Search results{{else}}Everything on sale{{end}}
   </p>
@@ -57,12 +94,19 @@
   <a class="card" href="/shop/products/{{.ID}}">
 
     <!--
-      There is no photograph to show, so the product is
-      drawn. A category with a picture gets that, and a
-      category without one falls back to the product's
-      initials, so no tile is ever empty.
+      A product with a picture shows the picture.
+      Everything else is drawn: a category with an icon
+      gets that, and a category without one falls back to
+      the product's initials, so no tile is ever empty and
+      a catalog nobody has photographed yet still reads as
+      a shop.
+
+      The picture carries an empty alt deliberately. The
+      product's name sits in the same link, a line below
+      it, so describing the picture as well would have a
+      screen reader read the product out twice.
     -->
-    <span class="tile {{tileClass .ID}}">{{with categoryIcon ($.CategoryName .CategoryID)}}{{.}}{{else}}{{tileInitials .Name}}{{end}}</span>
+    <span class="tile {{tileClass .ID}}">{{if .ImagePath}}<img class="tile-photo" src="{{.ImagePath}}" alt="" loading="lazy" decoding="async">{{else}}{{with categoryIcon ($.CategoryName .CategoryID)}}{{.}}{{else}}{{tileInitials .Name}}{{end}}{{end}}</span>
 
     <span class="card-body">
       <span class="card-name">{{.Name}}</span>

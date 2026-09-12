@@ -152,6 +152,81 @@ func (p catalogPage) CategoryName(id int) string {
 	return ""
 }
 
+// heroSlides is how many pictures the hero band cycles
+// through at most.
+//
+// The number is a fixed, small one rather than being
+// "however many products happen to have a picture", and
+// that is a limitation of doing this without JavaScript
+// rather than a decision about the catalog.
+//
+// A pure-CSS crossfade needs one keyframe rule per number
+// of slides, because the point in the cycle at which each
+// picture gives way to the next is written as a
+// percentage of the whole cycle, and a percentage cannot
+// be calculated from how many elements are on the page.
+// Percentages in a keyframe selector have to be literal.
+// So the stylesheet carries a rule for two slides, one
+// for three and one for four, and this is the largest of
+// them. See the hero rules in static/app.css, and note
+// that raising this number without adding a rule there
+// does not break the page: the band stops cycling and
+// shows one still picture instead.
+//
+// Four is also about the right size for a band that has
+// to sell. A hero cycling twelve photographs is a
+// slideshow, and a shopper scrolls past a slideshow.
+const heroSlides = 4
+
+// HeroSlides are the pictures the hero band rotates
+// through, in the order it shows them.
+//
+// They are drawn from the products already on this page,
+// which means the band shows what the shop actually has
+// rather than a fixed set of decorations that a listing
+// could quietly stop matching. It also means the band
+// follows the sort the shopper chose: on the default
+// ordering the newest four listings appear at the top of
+// the front page.
+//
+// A search returns nothing, for the same reason the
+// single photograph is dropped on a search. The pictures
+// are of specific products, and three of them with
+// nothing to do with what was asked for is worse than no
+// picture at all.
+//
+// Fewer than two pictures is nothing as well. One
+// picture cannot cycle, and a band that is not cycling
+// should be the band that was designed for standing
+// still.
+func (p catalogPage) HeroSlides() []string {
+
+	if p.Query != "" {
+		return nil
+	}
+
+	slides := make([]string, 0, heroSlides)
+
+	for _, product := range p.Page.Data {
+
+		if product.ImagePath == "" {
+			continue
+		}
+
+		slides = append(slides, product.ImagePath)
+
+		if len(slides) == heroSlides {
+			break
+		}
+	}
+
+	if len(slides) < 2 {
+		return nil
+	}
+
+	return slides
+}
+
 // filterQuery is the search and category part of a catalog
 // link, without a page number.
 //

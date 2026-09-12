@@ -9,6 +9,7 @@ import (
 
 	"e-commerce-backend/database"
 	"e-commerce-backend/handlers"
+	"e-commerce-backend/pictures"
 	"e-commerce-backend/services"
 	"e-commerce-backend/web"
 
@@ -48,6 +49,21 @@ func main() {
 
 		log.Println(
 			"PAYSTACK_SECRET_KEY is not set: payment endpoints will fail, everything else works",
+		)
+	}
+
+	// The picture classifier is built the same way and on
+	// the same terms as the Paystack client: present even
+	// when it has no credentials, and quiet until
+	// something needs it. What it does is optional, so
+	// refusing to start without it would take the whole
+	// shop down over a feature nobody has to use.
+	vision := services.NewVisionClientFromEnv()
+
+	if !vision.HasAPIKey() {
+
+		log.Println(
+			"ANTHROPIC_API_KEY is not set: new product pictures will not be sorted into categories, everything else works",
 		)
 	}
 
@@ -105,6 +121,68 @@ func main() {
 			"could not build the storefront: %v",
 			err,
 		)
+	}
+
+	// The product photographs are the one thing the shop
+	// serves that is not compiled into the binary. They
+	// live in a folder on disk, which is what makes it
+	// possible to add a picture without rebuilding, so
+	// the folder is mounted and read here rather than
+	// from inside the web package.
+	//
+	// Both halves run whatever is in the folder. A shop
+	// with no pictures is still a shop, so neither a
+	// missing folder nor a picture that matches nothing
+	// is a reason to refuse to start.
+	pictures.RegisterRoutes(mux, pictures.Dir())
+
+	report, pictureErr := pictures.Attach(
+		pool,
+		pictures.Dir(),
+	)
+
+	if pictureErr != nil {
+
+		log.Printf(
+			"could not read the product pictures: %v",
+			pictureErr,
+		)
+
+	} else {
+
+		report.Log()
+
+		// A picture that has just been attached is looked
+		// at, and its product moved into the category the
+		// picture suggests. Only the pictures this pass
+		// attached are looked at, which is what makes
+		// restarting free: a picture that was already in
+		// place was counted under Skipped and is never
+		// sent anywhere.
+		//
+		// Nothing here is fatal, and the pictures are
+		// attached and shown whether or not it works.
+		if vision.HasAPIKey() {
+
+			sorted, classifyErr := pictures.Classify(
+				pool,
+				vision,
+				pictures.Dir(),
+				report.Attached,
+			)
+
+			if classifyErr != nil {
+
+				log.Printf(
+					"could not sort the product pictures into categories: %v",
+					classifyErr,
+				)
+
+			} else {
+
+				sorted.Log()
+			}
+		}
 	}
 
 	mux.HandleFunc(

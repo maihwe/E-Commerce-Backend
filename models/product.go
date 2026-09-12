@@ -32,6 +32,21 @@ type Product struct {
 	// Description explains the product to shoppers.
 	Description string `json:"description"`
 
+	// ImagePath is where the product's picture is served
+	// from, or an empty string when it has none.
+	//
+	// It holds a path and not image data. The picture
+	// itself sits in a folder on disk, and this is the
+	// address the browser is given for it, so the same
+	// value is both what the API reports and what a page
+	// puts in an img tag.
+	//
+	// Nothing a client sends can write this field. It is
+	// set by the picture scanner and by nothing else, so
+	// a seller cannot point a listing at an address of
+	// their choosing.
+	ImagePath string `json:"image_path"`
+
 	// Price is the amount in the marketplace currency.
 	//
 	// It is a NUMERIC(15,2) column in PostgreSQL, so

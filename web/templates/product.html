@@ -11,14 +11,18 @@
   </p>
 
   <!--
-    The product shown large. It is the same tile the
-    catalog drew, only bigger, so tapping a card and
-    landing here feels like the same object rather than a
+    The product shown large. It is the picture if there
+    is one, and the same drawn tile the catalog used if
+    there is not, so tapping a card and landing here
+    feels like the same object either way rather than a
     different one.
+
+    No lazy loading here. This is the top of the page
+    and the reason the visitor came, so it is the one
+    picture in the shop that should be fetched straight
+    away rather than when it scrolls into view.
   -->
-  <div class="tile hero-tile {{tileClass .Product.ID}}">
-    {{with categoryIcon .Category.Name}}{{.}}{{else}}{{tileInitials .Product.Name}}{{end}}
-  </div>
+  <div class="tile hero-tile {{tileClass .Product.ID}}">{{if .Product.ImagePath}}<img class="tile-photo" src="{{.Product.ImagePath}}" alt="" decoding="async">{{else}}{{with categoryIcon .Category.Name}}{{.}}{{else}}{{tileInitials .Product.Name}}{{end}}{{end}}</div>
 
   <h1 class="product-name">{{.Product.Name}}</h1>
 

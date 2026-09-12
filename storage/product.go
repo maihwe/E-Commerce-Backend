@@ -33,6 +33,7 @@ const productColumns = `
 	p.name,
 	p.slug,
 	p.description,
+	p.image_path,
 	p.price,
 	p.currency,
 	p.is_active,
@@ -81,6 +82,7 @@ func scanProduct(scanner rowScanner) (models.Product, error) {
 		&product.Name,
 		&product.Slug,
 		&product.Description,
+		&product.ImagePath,
 		&product.Price,
 		&product.Currency,
 		&product.IsActive,
@@ -105,6 +107,18 @@ func scanProduct(scanner rowScanner) (models.Product, error) {
 // exactly what the zero values below say, which is why
 // this insert does not need a second query to read
 // them back.
+//
+// image_path is read back but never written here. A
+// listing is created without a picture and the picture
+// scanner attaches one afterwards, so the column takes
+// its default and the RETURNING list picks that default
+// up. It is in the list because both of the statements
+// that return a whole product must return the same
+// columns: a product that came from a write and a
+// product that came from a read are the same type, and
+// a field that one of them filled in and the other left
+// at zero would be a difference nobody could see from
+// the outside until it mattered.
 func CreateProductInDB(
 	pool *pgxpool.Pool,
 	product models.Product,
@@ -133,6 +147,7 @@ func CreateProductInDB(
 			name,
 			slug,
 			description,
+			image_path,
 			price,
 			currency,
 			is_active,
@@ -154,6 +169,7 @@ func CreateProductInDB(
 		&product.Name,
 		&product.Slug,
 		&product.Description,
+		&product.ImagePath,
 		&product.Price,
 		&product.Currency,
 		&product.IsActive,
@@ -191,6 +207,44 @@ func GetProductByIDFromDB(
 		WHERE p.id = $1
 		`,
 		id,
+	)
+
+	return scanProduct(row)
+}
+
+// GetProductBySlugFromDB finds one product by its slug.
+//
+// The slug is unique in the products table, so this
+// returns at most one row, and a slug that matches
+// nothing comes back as pgx.ErrNoRows for the caller to
+// tell apart from a real failure with errors.Is.
+//
+// It exists for the picture scanner, which is handed a
+// file rather than an id and has only the file's name to
+// go on. Looking a product up by its slug is what lets a
+// photograph called "cast-iron-pot.jpg" find the listing
+// it belongs to without anybody writing down a number.
+//
+// A slug is not a secret and is not treated as one: it
+// is a name that appears in every product URL. What
+// makes the lookup safe is that it goes through
+// products.slug, which the database will not let hold
+// the same value twice, so there is no question of a
+// picture landing on the wrong product because two
+// listings share a name.
+func GetProductBySlugFromDB(
+	pool *pgxpool.Pool,
+	slug string,
+) (models.Product, error) {
+
+	row := pool.QueryRow(
+		context.Background(),
+		`
+		SELECT `+productColumns+`
+		FROM products p
+		WHERE p.slug = $1
+		`,
+		slug,
 	)
 
 	return scanProduct(row)
@@ -420,6 +474,13 @@ func ListProductsFromDB(
 // The seller_id in the WHERE clause is the safety net:
 // if the product belongs to somebody else, no row
 // matches and the update changes nothing.
+//
+// The image is deliberately not in the SET list. A
+// seller editing a name or a price has not touched the
+// picture, and an edit that happened to carry a stale
+// copy of the product would otherwise be able to clear
+// it. The column belongs to the picture scanner, and
+// this statement leaves it exactly as it found it.
 func UpdateProductInDB(
 	pool *pgxpool.Pool,
 	productID int,
@@ -449,6 +510,7 @@ func UpdateProductInDB(
 			name,
 			slug,
 			description,
+			image_path,
 			price,
 			currency,
 			is_active,
@@ -471,6 +533,7 @@ func UpdateProductInDB(
 		&product.Name,
 		&product.Slug,
 		&product.Description,
+		&product.ImagePath,
 		&product.Price,
 		&product.Currency,
 		&product.IsActive,
@@ -485,4 +548,55 @@ func UpdateProductInDB(
 	// Read the derived values back so the caller
 	// gets the same shape as any other product.
 	return GetProductByIDFromDB(pool, product.ID)
+}
+
+// SetProductCategoryInDB moves one product into a
+// category, and changes nothing else about it.
+//
+// It is a statement of its own rather than a call to
+// UpdateProductInDB, and that is the whole reason it
+// exists. UpdateProductInDB takes a complete product and
+// writes every column of one, so handing it a structure
+// holding only a category id would set the name, the
+// price and the slug to their zero values and blank the
+// listing. The picture classifier knows exactly one thing
+// about a product -- which category its photograph looks
+// like -- and this is a statement that can only write
+// that one thing.
+//
+// Like SetProductImageInDB it reports whether anything
+// changed, so that a photograph which agrees with the
+// category the seller already chose costs no write and
+// does not move updated_at.
+//
+// IS DISTINCT FROM is used rather than <> for the same
+// reason it is used there: it treats NULL as an ordinary
+// value, and a comparison against a column that could be
+// NULL is exactly where the ordinary comparison quietly
+// answers "not different".
+func SetProductCategoryInDB(
+	pool *pgxpool.Pool,
+	productID int,
+	categoryID int,
+) (bool, error) {
+
+	tag, err := pool.Exec(
+		context.Background(),
+		`
+		UPDATE products
+		SET
+			category_id = $1,
+			updated_at = NOW()
+		WHERE id = $2
+		AND category_id IS DISTINCT FROM $1
+		`,
+		categoryID,
+		productID,
+	)
+
+	if err != nil {
+		return false, err
+	}
+
+	return tag.RowsAffected() > 0, nil
 }

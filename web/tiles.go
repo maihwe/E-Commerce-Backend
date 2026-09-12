@@ -20,14 +20,20 @@ const tileColours = 8
 
 // tileClass picks a colour for a product's tile.
 //
-// It is derived from the product's id rather than from a
-// column, because there is no image column and no colour
-// column to read. Deriving it has the useful property that
-// a product keeps the same colour everywhere it appears --
+// It is derived from the product's id rather than read
+// from a column, because there is no colour column to
+// read. Deriving it has the useful property that a
+// product keeps the same colour everywhere it appears --
 // the catalog, the product page, a cart line -- without
-// anything being stored, and that two products next to each
-// other in the grid are usually different colours, since
-// ids are handed out in sequence.
+// anything being stored, and that two products next to
+// each other in the grid are usually different colours,
+// since ids are handed out in sequence.
+//
+// A product with a picture covers this colour completely,
+// so the colour is only ever seen by the products that
+// have none. Those are exactly the tiles that would
+// otherwise be blank, which is why the fallback is kept
+// rather than stripped out now that pictures exist.
 func tileClass(id int) string {
 
 	// A negative id cannot occur, but a modulo of one would

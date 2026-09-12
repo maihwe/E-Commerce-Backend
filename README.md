@@ -7,6 +7,9 @@ Paystack. Sellers list products, restock them, and ship orders. Admins oversee
 categories, roles, coupons, and refunds. The whole commerce loop is here:
 catalog → cart → order → payment → fulfilment → review.
 
+The same marketplace is also served as pages, under `/shop`, from this same
+binary and this same database. See [The storefront](#the-storefront).
+
 The two things this project is really about are **not taking stock twice and
 not processing a payment twice**, and a lot of the design below exists for
 those two reasons.
@@ -133,7 +136,8 @@ go run .
 # Or with a shorter key, which the next paragraph explains.
 ```
 
-The server listens on `:8080` unless `PORT` says otherwise.
+The server listens on `:8080` unless `PORT` says otherwise. The storefront is
+at `http://localhost:8080/shop`, and `/` redirects to it.
 
 The secret key does two jobs: it authenticates calls to Paystack, and it is the
 value an incoming webhook's signature is checked against. **Whatever signs a
@@ -166,6 +170,24 @@ TEST_DATABASE_URL="postgres://$USER@localhost:5432/ecommerce_test?sslmode=disabl
 `TEST_DATABASE_URL` is deliberately a *different* variable from
 `DATABASE_URL`, and the database it names is never written to. It is only a
 place to connect to, so that `CREATE DATABASE` can be issued from it.
+
+`ANTHROPIC_API_KEY` is the other variable that turns a skipping test on. One
+test in `services` makes a real call to the model API, and skips without a key
+rather than failing:
+
+```sh
+set -a; . ./.env; set +a
+
+go test ./services -run RealAPI -v
+```
+
+Everything else in that package is checked against a local stand-in server, and
+a stand-in agrees with whatever it is told: those tests pin what the client
+*sends*. That one test is the only place that finds out whether the API accepts
+it, so it is worth running once after any change to `services/vision.go`. It
+checks the shape of the request and not the model's judgement — the picture it
+sends is flat colour and has no right answer, so an empty reply is a passing
+one.
 
 Each test process then makes its own scratch database — the name in that
 variable with the process id appended — applies the migrations to it, and
@@ -398,6 +420,140 @@ Status changes are broadcast into the same room, which is what makes this live
 
 ---
 
+## The storefront
+
+The same marketplace is served as pages at `/shop`, from this binary and against
+this database. Pages rather than a separate frontend, for one concrete reason:
+sessions live in an in-memory map inside the `storage` package, so a second
+process would hold a map of its own and a sign-in made in a browser would be
+invisible to the API. One process means one map, and one answer to the question
+of who is signed in.
+
+| Method | Path |
+|---|---|
+| `GET` | `/shop` |
+| `GET` | `/shop/products/{id}` |
+| `GET` `POST` | `/shop/login` |
+| `GET` `POST` | `/shop/register` |
+| `POST` | `/shop/logout` |
+| `GET` | `/shop/static/…` |
+| `GET` | `/shop/img/…` |
+
+It is under `/shop` rather than at the root because every meaningful path at the
+root is already registered by the API, and `http.ServeMux` panics on a duplicate
+pattern — sharing would be a crash at startup rather than a routing preference.
+Root was the one path the API left free, and it redirects here.
+
+### It repeats the shape of a request, never the rules
+
+Turning a form into arguments happens in `web/`, because a form is not a JSON
+body. Everything after that is the same code the JSON handlers call: `storage`
+for the queries, `models` for the order state machine and the coupon rules,
+`handlers` for authentication and sessions. A page and an endpoint cannot come to
+different conclusions about what is in stock, which status changes are allowed,
+or how much a coupon takes off, because each of those answers is written in
+exactly one place.
+
+Concretely, `POST /shop/login` calls `handlers.AuthenticateUser` and
+`handlers.StartSession`, the same two functions `POST /login` calls, and a form
+body is capped at the same 1 MiB the JSON endpoints allow.
+
+The one deliberate disagreement is registration. `POST /register` creates the
+account and does **not** sign you in; `POST /shop/register` does both. That is
+not the page departing from the rule, it is the two documented steps performed
+without making somebody type their brand-new password a second time.
+
+### The band at the top of the catalog
+
+It has three states, and two of them exist in order to *not* show a picture.
+
+- **While a search is running** it is a plain tint. The pictures are of specific
+  products, and three of them with nothing to do with what was asked for are
+  worse than no picture at all.
+- **With pictures to show** it cycles through up to four of them, drawn from the
+  products on this page — so the band shows what the shop actually has, and it
+  follows the sort the shopper chose.
+- **With nothing photographed** it falls back to `web/static/img/hero.jpg`, the
+  one photograph committed to the repository rather than dropped into a folder.
+  A shop where nobody has taken a picture yet should still open with something
+  to look at.
+
+The rotation is pure CSS, one `@keyframes` per slide count, and that is why it
+stops at four. The moment each picture gives way to the next is a percentage of
+the whole cycle, and a percentage in a keyframe selector has to be literal — it
+cannot be computed from how many elements are on the page. So the stylesheet
+carries a rule for two slides, one for three and one for four, and
+`web/catalog.go` never sends a fifth. Raising that cap without adding a rule does
+not break the page: the band stops cycling and shows one still picture rather
+than a black gap.
+
+`prefers-reduced-motion` turns the rotation off entirely.
+
+### Product pictures
+
+A tile shows the product's photograph when it has one, its category's icon when
+it does not, and the product's initials when the category has no icon either — so
+a catalog nobody has photographed yet still reads as a shop rather than as a grid
+of grey boxes.
+
+Photographs are the one thing the storefront serves that is not compiled into the
+binary. They live in a folder on disk, are read once at startup, are served from
+`/shop/img/`, and the URL is what `products.image_path` holds. The naming rule,
+the line the server logs at startup, and how to prepare a photograph off a phone
+are in [pictures/README.md](pictures/README.md).
+
+`image_path` is the one column no request can write. It is set by the picture
+scanner and by nothing else, which is what stops a seller pointing a listing at
+an address of their choosing.
+
+#### Sorting a picture into a category
+
+Attaching a photograph does a second thing. The picture is sent to a Claude
+vision model, which is asked which of the shop's categories the product in it
+belongs to, and the product is moved to that one. That is the difference between
+a shop whose pictures are right and a shop that is right in the way a shopper
+notices, because the categories are the buttons they browse with.
+
+**Only the pictures a scan has just attached are looked at.** A picture that was
+already in place was counted under `Skipped`, so restarting the server sends
+nothing anywhere and costs nothing. There is no "classified" flag and no table of
+what has been done, because the folder and the database already agree about it —
+the same idempotency the scan itself uses, doing a second job.
+
+**The answer is never stored.** The model is handed the shop's own categories and
+its reply is looked up in that list, so a reply that is anything else is discarded
+and the product keeps the category its seller chose. The worst a wrong answer can
+do is choose the wrong one of ten things somebody already decided the shop sells;
+it cannot introduce a category, and no sentence the model writes reaches the
+database. It is the same discipline the catalog's sort keys follow, where the
+client's text is only ever used to look up one of a fixed set of fragments.
+
+Every failure belongs to one picture. An unreadable file, a refused call, an
+answer that matches nothing: each is logged with its reason and the next picture
+is tried. The picture is attached and shown either way.
+
+Without `ANTHROPIC_API_KEY` nothing is sent, every product keeps the category its
+seller gave it, and the rest of the shop is unaffected — the same arrangement
+`PAYSTACK_SECRET_KEY` has. AVIF is the one format that is attached and shown but
+not sent, since the API takes JPEG, PNG, GIF and WebP; the report names those
+files rather than leaving the gap to be noticed.
+
+`services/vision.go` is the client and `pictures/classify.go` is the pass over the
+folder. The client is shaped like `services/paystack.go`: raw `net/http`, no SDK,
+and no new dependency.
+
+**The live call has not been made from this repository.** It needs a key and
+billing that this project does not have, which is the same position the Paystack
+integration is in — a real client, real parameters, and no credentials to point
+it at. Everything short of the call is tested against a local stand-in server,
+and a stand-in agrees with whatever it is told. So the tests here pin what this
+client *sends*; whether the API accepts it is a separate question, and
+`services/vision_live_test.go` is the one test that answers it. It skips without
+a key and makes the real call with one, so it is worth running once after any
+change to that file.
+
+---
+
 ## A walkthrough
 
 The whole loop, end to end, as a script:
@@ -559,9 +715,12 @@ models/                 plain data types, plus the order state machine
                         and the coupon rules
 storage/                every SQL query, one file per subject
 handlers/               HTTP: parse, authorise, delegate, answer
+web/                    the same marketplace as pages, under /shop
 services/               Paystack client, and the chat hub
 utils/                  money, passwords, sessions, pagination,
                         signatures, validation
+pictures/               the photograph folder, and the scanner that
+                        attaches a file to the product it is named after
 database/
   connection.go         the connection pool
   migrations.go         the migrations, embedded for tests
@@ -613,6 +772,20 @@ readable in one place with no router dependency.
   bytes and a constant-time comparison.
 - **Search text is never interpolated into SQL.** Every filter value is a
   numbered placeholder, and sort keys are looked up in a fixed map.
+- **The picture folder serves pictures and nothing else.** `/shop/img/` answers
+  `404` to a directory listing, to a file that is not there, and to a file whose
+  extension is not one of six image types — the same answer in every case, so the
+  address cannot be used to ask which files exist. SVG is deliberately not among
+  the six: an SVG is a document that can carry script, and it would be served
+  from this site's own origin.
+- **The sign-in page cannot be used as an open redirect.** `next` arrives in the
+  query string, so it is honoured only when it points inside `/shop`, and a value
+  beginning `//` or `/\` is refused even though it starts with a slash. Without
+  that check, a link really would begin at this site and end at another one's.
+- **No text a model produces is ever stored.** The picture classifier returns a
+  slug which is looked up in the shop's own list of categories, and an answer
+  that is not one of them is discarded. The model cannot add a category and
+  cannot write anything a shopper will read.
 - **Two things must be changed before this is exposed publicly:**
   - the session cookie's `Secure` flag, currently `false` so that it works over
     local HTTP;

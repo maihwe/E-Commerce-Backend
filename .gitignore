@@ -23,6 +23,24 @@ e-commerce-backend
 *.log
 pgdata/
 
+# The drop folder for product photographs.
+#
+# Everything dropped in it is somebody's own picture, and
+# none of it belongs in the repository.
+#
+# The ignore is by extension rather than by folder, and
+# that is not fussiness. The package that reads the folder
+# lives in the folder: pictures.go, classify.go and the
+# tests are project code, and the photographs are not. A
+# rule ignoring the whole directory would leave the
+# scanner out of every commit while the build carried on
+# working from the copy on disk, so the omission would
+# only surface on a fresh clone, as a package that does
+# not exist.
+pictures/*
+!pictures/README.md
+!pictures/*.go
+
 # Claude Code's local state for this project: session data
 # and machine-specific settings. None of it is part of the
 # application, and some of it is a transcript.

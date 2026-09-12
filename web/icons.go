@@ -7,10 +7,10 @@ import (
 
 // This file draws the pictures the tiles carry.
 //
-// The catalog has no photographs, because the products
-// table has no column to hold one. Rather than leave every
-// product as two letters on a colour, each category gets a
-// small line drawing: a pot for Home & Kitchen, a shirt for
+// A product with a photograph shows the photograph, and
+// these are for the ones without. Rather than leave those
+// as two letters on a colour, each category gets a small
+// line drawing: a pot for Home & Kitchen, a shirt for
 // Fashion, a basket for Groceries. It is not a photograph
 // of the thing, but it does say what kind of thing it is,
 // and at a glance down a grid that is most of what a
