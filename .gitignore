@@ -1,0 +1,29 @@
+# Environment files hold real credentials, so they stay
+# out of version control. .env.example is committed
+# instead, and shows which variables are needed without
+# revealing any of their values.
+.env
+
+# Compiled binaries.
+e-commerce-backend
+*.exe
+
+# Test binaries and coverage output.
+*.test
+*.out
+
+# Editor and operating system clutter.
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local database files, in case a cluster is ever created
+# inside the project directory.
+*.log
+pgdata/
+
+# Claude Code's local state for this project: session data
+# and machine-specific settings. None of it is part of the
+# application, and some of it is a transcript.
+.claude/
