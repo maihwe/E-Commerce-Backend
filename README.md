@@ -1,5 +1,7 @@
 # E-Commerce Backend
 
+[![CI](https://github.com/maihwe/E-Commerce-Backend/actions/workflows/ci.yml/badge.svg)](https://github.com/maihwe/E-Commerce-Backend/actions/workflows/ci.yml)
+
 A REST API for a small marketplace, written in Go against PostgreSQL.
 
 Shoppers browse a catalog, keep a cart, place orders, and pay for them through
@@ -202,6 +204,24 @@ exist.
 The one requirement this places on the role in `TEST_DATABASE_URL` is
 `CREATEDB`. When the variable is unset, the database-backed tests skip and the
 pure unit tests still run.
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs the suite twice on every push and every pull
+request, and the split follows the rule above rather than inventing a second
+one. The first job builds, vets and tests with no `TEST_DATABASE_URL`, so the
+database-backed tests skip and the job finishes in seconds. The second runs the
+same command against a PostgreSQL service container, and waits on the first —
+so a build that does not compile is reported before a database is started for
+it.
+
+Both jobs set `GOTOOLCHAIN=local` and take their Go version from `go.mod`
+rather than from a number written into the workflow, so the two cannot drift
+apart and bumping the `go` line is the only edit a new toolchain needs. Between
+them, the runner's Go is the version this module asks for, and a runner whose
+Go is older fails loudly instead of fetching a newer toolchain mid-build. That
+is the same failure described at the end of this file, arriving as a red check
+rather than as a confusing error on somebody else's machine.
 
 ---
 
@@ -897,4 +917,13 @@ toolchain switch necessary in the first place. It may also drop the `toolchain`
 line if the language version already implies it. Neither changes what the source
 depends on; the code is still written to the Go 1.22 language level, and the
 `go` line is a statement about what the module requires, not about what it uses.
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+It covers the code. The photographs in `pictures/` are product images rather
+than source, and this file makes no claim about them one way or the other.
 

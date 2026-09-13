@@ -1,0 +1,102 @@
+# What runs on every push and every pull request.
+#
+# Two jobs rather than one, and the split is this
+# repository's own rule rather than a CI-shaped one.
+# TEST_DATABASE_URL is what the database-backed tests
+# need, and when it is unset they skip instead of failing
+# -- see "Tests" in the README. So one job runs the suite
+# with no database at all and is over in seconds, and the
+# other runs it again against a real PostgreSQL.
+#
+# The fast job is the one that gets read. A build that
+# does not compile, or a unit test that fails, is worth
+# knowing in twenty seconds rather than in five minutes,
+# and the second job exists to catch everything the first
+# one skipped.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# The toolchain is pinned rather than left to resolve
+# itself. go.mod asks for go 1.26.0, and a runner with an
+# older go would otherwise try to fetch a newer toolchain
+# in the middle of the build. GOTOOLCHAIN=local turns
+# that into a loud failure instead of a silent download,
+# which is the same arrangement the README describes for
+# a machine whose installed go is too old for the
+# dependencies.
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  test:
+    name: Build and unit tests, no database
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The version is read from go.mod rather than written
+      # here, so the two cannot drift apart. Bumping the go
+      # line is then the only edit a new toolchain needs.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      # TEST_DATABASE_URL is deliberately left unset. The
+      # database-backed tests skip, and what remains is the
+      # part that needs nothing but the source.
+      - name: Test
+        run: go test ./...
+
+  database:
+    name: Tests against PostgreSQL
+    runs-on: ubuntu-latest
+
+    needs: test
+
+    services:
+      postgres:
+        image: postgres:16
+
+        env:
+          POSTGRES_PASSWORD: postgres
+
+        ports:
+          - 5432:5432
+
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Each test process makes its own scratch database,
+      # named after this one with the process id appended,
+      # and drops it when it finishes. That is what the role
+      # needs CREATEDB for, and the postgres superuser has
+      # it.
+      - name: Test
+        run: go test ./...
