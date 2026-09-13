@@ -326,6 +326,17 @@ func (p catalogPage) NextURL() string {
 	return p.PageURL(p.Page.Page + 1)
 }
 
+// relatedLimit is how many other products the strip
+// underneath a listing offers.
+//
+// Four fills two rows on a phone and one row and a third
+// on a wide screen. It is a handful rather than a page
+// because the strip is a shelf to glance along, not a
+// second catalog: a shopper who wants the whole category
+// has the link to it in the breadcrumb above, which is
+// the same link the heading names.
+const relatedLimit = 4
+
 // productPage is one listing.
 type productPage struct {
 	base
@@ -342,6 +353,40 @@ type productPage struct {
 	OwnsProduct bool
 
 	InStock bool
+
+	// Related is a few other products from the same
+	// category, offered underneath this one.
+	//
+	// It is the answer to the question a shopper asks
+	// once they have read a listing: what else is there
+	// like this. A catalog that is sorted into categories
+	// can answer that without being asked, which is the
+	// whole reason the categories are worth having.
+	Related []models.Product
+}
+
+// RelatedTitle is the heading over the strip.
+//
+// It is written here rather than assembled in the markup
+// because one of its two cases is a sentence rather than
+// a value, and a template choosing between a category
+// name and a phrase is a template that reads as neither.
+//
+// The fallback is for a category that could not be read.
+// That is close to impossible -- the product carries a
+// category id the database will not let dangle -- but a
+// heading that says "More in" and stops would be worse
+// than one that does not name the category at all. It
+// deliberately does not promise the strip is the whole
+// category, because it is four products and not the
+// shelf.
+func (p productPage) RelatedTitle() string {
+
+	if p.Category.Name == "" {
+		return "More to look at"
+	}
+
+	return "More in " + p.Category.Name
 }
 
 // productPage renders one listing.
@@ -437,6 +482,31 @@ func (s *Site) productPage(
 	}
 
 	data.InStock = product.StockAvailable > 0
+
+	// The strip underneath. It is drawn from this
+	// product's own category rather than from
+	// GetRecommendationsFromDB, which would prefer
+	// whatever people bought alongside it. Two reasons,
+	// and both are about the strip being a way into a
+	// shelf rather than a row of loose suggestions: the
+	// heading can name the category, because there is
+	// only one, and every tile in it is drawn for the
+	// same category, so the strip cannot show a pot where
+	// a phone belongs.
+	//
+	// A failure here is not worth failing the page over.
+	// The product is what the visitor came for; this is a
+	// strip below it. An empty list draws nothing at all.
+	related, err := storage.ListTopRatedInCategoryFromDB(
+		s.pool,
+		product.CategoryID,
+		productID,
+		relatedLimit,
+	)
+
+	if err == nil {
+		data.Related = related
+	}
 
 	s.render(w, http.StatusOK, productFile, data)
 }

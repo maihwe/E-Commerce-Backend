@@ -69,4 +69,52 @@
 
 </article>
 
+{{if .Related}}
+<!--
+  The shelf this listing is standing on: a few more
+  products from the same category.
+
+  They are drawn with the category's own icon rather
+  than with their initials, because every one of them is
+  the same kind of thing as the product above and the
+  catalog already has a drawing for that kind of thing.
+  The initials are still the last fallback, so a
+  category nobody has drawn for still gets tiles rather
+  than blank squares.
+
+  The rating line the catalog cards carry is left off
+  deliberately. This is a glance along a shelf, and the
+  price and whether there is any left are what choosing
+  between two of them actually turns on.
+
+  The tiles are the catalog's own card markup, so a
+  product looks the same here as it does in the grid it
+  came from. That is the point of repeating it rather
+  than inventing a second, smaller card.
+-->
+<section class="related">
+  <h2 class="related-title">{{.RelatedTitle}}</h2>
+
+  <div class="grid">
+    {{range .Related}}
+    <a class="card" href="/shop/products/{{.ID}}">
+      <span class="tile {{tileClass .ID}}">{{if .ImagePath}}<img class="tile-photo" src="{{.ImagePath}}" alt="" loading="lazy" decoding="async">{{else}}{{with categoryIcon $.Category.Name}}{{.}}{{else}}{{tileInitials .Name}}{{end}}{{end}}</span>
+
+      <span class="card-body">
+        <span class="card-name">{{.Name}}</span>
+
+        <span class="card-foot">
+          <span class="price">{{money .Price}}</span>
+
+          <span class="pill{{if le .StockAvailable 0}} out{{end}}">
+            {{if gt .StockAvailable 0}}{{.StockAvailable}} left{{else}}Sold out{{end}}
+          </span>
+        </span>
+      </span>
+    </a>
+    {{end}}
+  </div>
+</section>
+{{end}}
+
 {{end}}

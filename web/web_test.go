@@ -70,6 +70,65 @@ func TestPagesParse(t *testing.T) {
 	}
 }
 
+// TestRelatedTitle pins the heading over the strip of
+// other products on a listing.
+//
+// It is a small thing to test, and it is tested because
+// one of its two answers is a sentence rather than a
+// name. A heading reading "More in" and stopping is not a
+// failure any test of the page's shape would catch: the
+// page renders, the strip is there, and the only thing
+// wrong with it is the half-line above it.
+//
+// The fallback is reached when the category could not be
+// read, which is why it does not promise the strip is the
+// whole category. Nothing here asserts how many products
+// the strip holds, because the heading does not.
+func TestRelatedTitle(t *testing.T) {
+
+	cases := []struct {
+		name string
+
+		category models.Category
+
+		want string
+	}{
+
+		{
+			"a named category is named",
+
+			models.Category{ID: 1, Name: "Phones & Tablets"},
+
+			"More in Phones & Tablets",
+		},
+
+		{
+			"a category that could not be read still gets a heading",
+
+			models.Category{},
+
+			"More to look at",
+		},
+	}
+
+	for _, test := range cases {
+
+		page := productPage{Category: test.category}
+
+		got := page.RelatedTitle()
+
+		if got != test.want {
+
+			t.Errorf(
+				"%s: RelatedTitle() = %q, want %q",
+				test.name,
+				got,
+				test.want,
+			)
+		}
+	}
+}
+
 // TestHeroSlides pins what the band at the top of the
 // catalog cycles through.
 //

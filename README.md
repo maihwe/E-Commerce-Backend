@@ -570,6 +570,40 @@ client *sends*; whether the API accepts it is a separate question, and
 a key and makes the real call with one, so it is worth running once after any
 change to that file.
 
+### The shelf under a listing
+
+Under every listing is a short strip of other products from the same category,
+under a heading that names it: *More in Phones & Tablets*.
+
+It is drawn from `ListTopRatedInCategoryFromDB`, and not from the
+`GetRecommendationsFromDB` that backs `GET /products/{id}/recommendations`. That
+is a deliberate disagreement between the page and the endpoint, and it is worth
+being exact about, because the endpoint's answer is the better one in general.
+
+The endpoint prefers what people bought together, which is the right answer to
+"what goes with this" and the wrong answer to the question the strip is asking.
+Two reasons, and they are the same reason twice.
+
+The heading is the first. A strip that mixes categories cannot be titled *More
+in Phones & Tablets*, and a heading that names nothing — *You might also like* —
+turns the strip into decoration. Naming the category is what makes it a way into
+the rest of the shelf, so that following one product is staying where the shopper
+already is, which is the whole point of a catalog sorted into categories.
+
+The tiles are the second. A tile with no photograph is drawn from its product's
+category, and this page knows the name of exactly one category, its own. A
+recommendation from somewhere else could only be drawn with initials where its
+own category had an icon. Four products, all the same kind of thing, is what lets
+the strip reuse the catalog's card markup exactly — so a product looks the same
+in the strip as it does in the grid it came from.
+
+A failure to load the strip draws nothing rather than failing the page. The
+product is what the visitor came for; the strip is below it.
+
+The one thing the strip does not carry is the catalog's rating line. It shows the
+price and how many are left, which is what choosing between two of something
+turns on.
+
 ---
 
 ## A walkthrough

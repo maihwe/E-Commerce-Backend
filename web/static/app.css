@@ -1211,6 +1211,42 @@ button:hover,
   font-size: 14px;
 }
 
+/* ---------- the shelf underneath a listing ---------- */
+
+/*
+ * The strip of other products from the same category.
+ *
+ * It carries no side padding of its own. The grid inside
+ * it already has that padding, and two of them stacked
+ * would inset the strip further than the product above it
+ * and make it read as part of some other page.
+ *
+ * The rule across the top is what separates the two. The
+ * listing above ends in a paragraph and this begins with
+ * a heading, and a paragraph followed by a heading is a
+ * break that is easy to miss on a phone.
+ */
+.related {
+  margin-top: 26px;
+
+  border-top: 1px solid var(--line);
+}
+
+.related-title {
+  margin: 0;
+
+  /* Top and sides here, none at the bottom: the grid
+     below supplies the gap, and its own top padding is
+     already the space a heading wants under it. */
+  padding: 22px 14px 0;
+
+  color: var(--ink-soft);
+
+  font-size: 17px;
+
+  font-weight: 700;
+}
+
 /* ---------- shared page furniture ---------- */
 
 .pad {
@@ -1405,6 +1441,7 @@ button.link:hover {
   .hero,
   .grid,
   .pager,
+  .related-title,
   .site-footer {
     padding-left: 24px;
 
@@ -1430,7 +1467,8 @@ button.link:hover {
 
   .hero,
   .grid,
-  .pager {
+  .pager,
+  .related {
     max-width: 900px;
 
     margin-left: auto;
