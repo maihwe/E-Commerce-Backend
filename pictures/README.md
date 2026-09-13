@@ -3,9 +3,12 @@
 Drop a photograph in this folder and it becomes that
 product's picture.
 
-Nothing here is committed. This folder is listed in
-`.gitignore`, apart from this file, because everything
-that lands in it is somebody's own photograph.
+The file types the scanner accepts are committed, so a
+clone comes with the shop's pictures rather than with a
+grid of drawn tiles. `.gitignore` keeps them by extension
+rather than by folder, so anything else dropped in here
+-- a screenshot, a stray `.DS_Store` -- is still ignored,
+and the comment beside the rules says why it is a list.
 
 ## The rule
 
