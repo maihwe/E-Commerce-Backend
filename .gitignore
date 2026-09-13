@@ -23,23 +23,40 @@ e-commerce-backend
 *.log
 pgdata/
 
-# The drop folder for product photographs.
+# The folder the product photographs are read from.
 #
-# Everything dropped in it is somebody's own picture, and
-# none of it belongs in the repository.
+# The photographs are kept. They are the shop's own
+# catalogue images, served out of this folder at
+# /shop/img/, and a clone without them is a storefront
+# whose every listing falls back to a drawn tile: the
+# scan attaches nothing, because there is nothing there
+# to attach.
 #
-# The ignore is by extension rather than by folder, and
+# The rules are by extension rather than by folder, and
 # that is not fussiness. The package that reads the folder
 # lives in the folder: pictures.go, classify.go and the
-# tests are project code, and the photographs are not. A
-# rule ignoring the whole directory would leave the
-# scanner out of every commit while the build carried on
-# working from the copy on disk, so the omission would
-# only surface on a fresh clone, as a package that does
-# not exist.
+# tests are project code. A rule ignoring the whole
+# directory would leave the scanner out of every commit
+# while the build carried on working from the copy on
+# disk, so the omission would only surface on a fresh
+# clone, as a package that does not exist.
+#
+# The picture extensions are the list from imageExtensions
+# in pictures.go, so the two cannot drift into the state
+# where the server serves a file type that version control
+# does not keep. SVG is left out because the scanner
+# refuses it, for the reason given there. Anything else
+# dropped in the folder -- a screenshot, a stray .DS_Store
+# -- is still ignored.
 pictures/*
 !pictures/README.md
 !pictures/*.go
+!pictures/*.jpg
+!pictures/*.jpeg
+!pictures/*.png
+!pictures/*.webp
+!pictures/*.gif
+!pictures/*.avif
 
 # Claude Code's local state for this project: session data
 # and machine-specific settings. None of it is part of the
