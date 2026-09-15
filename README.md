@@ -20,6 +20,59 @@ those two reasons.
 
 ## Running it
 
+### In short
+
+Two terminals, and one line that is easy to forget.
+
+```sh
+# Terminal 1 — the database. Leave it running; this is the server,
+# not a helper that finishes and exits.
+go run ./database/devdb
+
+# Terminal 2 — the API. Leave it running too.
+. ~/ecb-env.sh
+go run .
+```
+
+Then open <http://localhost:8080/shop>.
+
+The line to forget is `. ~/ecb-env.sh`. Without it the API stops immediately
+with `DATABASE_URL is not set`, which names the variable but not the file that
+holds it. Each terminal has its own environment, so sourcing that file in one
+does not help the next one — it must be sourced in **every** terminal that runs
+the app or the tests. Sourcing a `.env` is not a substitute: the program has no
+`.env` loader and never reads one.
+
+Nothing else needs doing. The catalogue lives in PostgreSQL, in
+`~/.ecb-postgres/data`, and survives every restart of both the database and the
+API. It is not rebuilt, and it does not need refilling.
+
+If the shop is *empty* — no listings at all — the catalogue has never been
+created, which happens once per new database. That is the only time this third
+command is needed:
+
+```sh
+# Terminal 3 — once, ever, and only against a running API.
+. ~/ecb-env.sh
+sh seed.sh
+```
+
+`seed.sh` creates one listing per row of the table inside `stock.sh`, so the
+names, categories and prices are read from one place rather than two. Running it
+twice is harmless: a listing that already exists is refused by its unique slug
+and reported as a skip. It does not copy pictures — those are committed in
+`pictures/` — so the listings it makes attach to them the next time the API
+starts.
+
+Two things worth knowing on the day something looks wrong:
+
+- **A new photograph needs a restart of terminal 2.** `pictures/` is read once,
+  at startup. Browsing never needs anything, and neither does an existing
+  picture.
+- **`go test ./...` cannot damage the catalogue.** The suite drops and rebuilds
+  its schema on every run, which is exactly why it is pointed at a separate
+  `ecommerce_test` database.
+
 ### 0. Go
 
 The code is written to the Go 1.22 language level — `http.ServeMux`'s method and
